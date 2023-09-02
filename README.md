@@ -3,5 +3,8 @@ Raspberry Pi Pico OLED dual channel oscilloscope with Pulse Generator, DDS Funct
 
 <img src="DSC00020.jpg">
 
+Schematics:<br>
+<img src="RPPicoGOscillo121.png">
+
 Description is here, although it is written in Japanese language:
 http://harahore.g2.xrea.com/RaspberryPiPico/RPPicoGOscillo.html
