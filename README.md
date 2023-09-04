@@ -13,7 +13,7 @@ Adafruit_SH110X<br>
 arduinoFFT by Enrique Condes 1.6.1<br>
 
 Schematics:<br>
-<img src="RPPicoGOscillo121.png">
+<img src="RPPicoGOscillo.png">
 
 Description is here, although it is written in Japanese language:
 http://harahore.g2.xrea.com/RaspberryPiPico/RPPicoGOscillo.html
