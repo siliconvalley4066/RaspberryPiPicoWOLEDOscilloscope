@@ -6,7 +6,7 @@ Raspberry Pi Pico OLED dual channel oscilloscope with Pulse Generator, DDS Funct
 Develop environment is:<br>
 Arduino IDE 1.8.19<br>
 Raspberry Pi Pico/RP2040 by Earle F. Philhower, III version 3.4.0<br>
-  Cpu speed 125MHz<br>
+CPU speed 125MHz<br>
 
 Libraries:<br>
 Adafruit_SSD1306<br>
