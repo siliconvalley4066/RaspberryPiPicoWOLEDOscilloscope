@@ -27,8 +27,8 @@ byte wave_id = 0;
 static word slice_num2; // GP2 PWM slice number
 #define DDSPin 2
 
-// const double refclk=61035.15625; // 61.03515625kHz
-const double refclk=61035.15625;    // measured
+// const double refclk=61035.15625; // 61.03515625kHz at 125MHz
+double refclk=61035.15625;          // System clock is typically 125MHz, eventually 133MHz
 
 // variables used inside interrupt service declared as voilatile
 volatile byte icnt;             // var inside interrupt
@@ -37,6 +37,7 @@ volatile unsigned long tword_m; // dds tuning word m
 
 void dds_setup() {
 //  pinMode(DDSPin, OUTPUT);      // GPIO2= PWM  output / frequency output
+  refclk = sys_clk / (double) (8*256);
   Setup_timer2();
   tword_m=pow(2,32)*ifreq*0.01/refclk; // calulate DDS new tuning word
   wp = (unsigned char *) wavetable[wave_id];
@@ -62,6 +63,12 @@ void rotate_wave(bool fwd) {
   }
   wp = (unsigned char *) wavetable[wave_id];
 }
+
+void set_wave(int id) {
+  wave_id = id;
+  wp = (unsigned char *) wavetable[wave_id];
+}
+
 //******************************************************************
 // timer2 setup
 // set prscaler to 8, PWM mode, 125000000/8/256 = 61035.15625 Hz clock
@@ -119,7 +126,7 @@ void update_ifrq(long diff) {
 void disp_dds_freq(void) {
   display.setTextColor(TXTCOLOR, BGCOLOR);
   display.setCursor(72, 56);
-  display.print((double)ifreq * 0.01, 2); display.print(F("Hz"));
+  display.print((double)ifreq * 0.01, 2); display.print("Hz");
 }
 
 void disp_dds_wave(void) {

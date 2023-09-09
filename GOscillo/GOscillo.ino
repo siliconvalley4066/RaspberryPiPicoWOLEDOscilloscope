@@ -1,10 +1,10 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.24
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.25
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
  * + Frequency Counter (kHz)
- * Copyright (c) 2022, Siliconvalley4066
+ * Copyright (c) 2023, Siliconvalley4066
  */
 /*
  * Arduino Oscilloscope using a graphic LCD
@@ -31,7 +31,9 @@ Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 
 #define WHITE 1
 #define BLACK 0
 #endif
+#ifndef ARDUINO_ARCH_MBED_RP2040
 #define EEPROM_START 0
+#endif
 #ifdef EEPROM_START
 #include <EEPROM.h>
 #endif
@@ -100,7 +102,7 @@ const unsigned long HREF[] PROGMEM = {20, 40, 50, 100, 120, 200, 500, 1000, 2000
 const char Ranges[5][5] PROGMEM = {" 1V ", "0.5V", "0.2V", "0.1V", "50mV"};
 byte range0 = RANGE_MIN;
 byte range1 = RANGE_MIN;
-byte ch0_mode = MODE_ON, ch1_mode = MODE_ON, rate = 0, orate;
+byte ch0_mode = MODE_ON, ch1_mode = MODE_ON, rate = 0, orate, wrate = 0;
 byte trig_mode = TRIG_AUTO, trig_lv = 10, trig_edge = TRIG_E_UP, trig_ch = ad_ch0;
 bool Start = true;  // Start sampling
 byte item = 0;      // Default item
@@ -108,12 +110,17 @@ byte menu = 0;      // Default menu
 short ch0_off = 0, ch1_off = 400;
 byte data[2][SAMPLES];                  // keep the number of channels buffer
 uint16_t cap_buf[NSAMP], cap_buf1[NSAMP/2];
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+uint16_t payload[SAMPLES*2];
+#endif
 byte odat00, odat01, odat10, odat11;    // old data buffer for erase
 byte sample=0;                          // index for double buffer
 bool fft_mode = false, pulse_mode = false, dds_mode = false, fcount_mode = false;
 bool full_screen = false;
 byte info_mode = 3; // Text information display mode
 int trigger_ad;
+float sys_clk;      // System clock is typically 125MHz, eventually 133MHz
+bool wfft;
 
 #define LEFTPIN   18  // LEFT
 #define RIGHTPIN  19  // RIGHT
@@ -137,6 +144,7 @@ void setup(){
   pinMode(DOWNPIN, INPUT_PULLUP);   // down
   pinMode(RIGHTPIN, INPUT_PULLUP);  // right
   pinMode(LEFTPIN, INPUT_PULLUP);   // left
+  pinMode(LED_BUILTIN, OUTPUT);     // sets the digital pin as output
 //  pinMode(CALPIN, OUTPUT);          // PWM out
 //  pinMode(2, OUTPUT);               // DDS out
 #ifdef DISPLAY_IS_SSD1306
@@ -153,18 +161,18 @@ void setup(){
   set_default();
 #endif
   menu = item >> 3;
+  wfft = fft_mode;
   display.clearDisplay();
 //  DrawGrid();
 //  DrawText();
 //  display.display();
-  orate = rate;                         // old rate befor change
-//  analogReadResolution(12);
-//  (void) analogRead(ad_ch0);            // read and neglect to setup ADC
-  dmaadc_setup(0);                      // initial setup for DMA adc
+  sys_clk = (float) clock_get_hz(clk_sys);  // identify 125MHz or 133MHz or else
   if (pulse_mode)
     pulse_init();                       // calibration pulse output
   if (dds_mode)
     dds_setup();
+  orate = RATE_DMA + 1;                 // old rate befor change
+  dmaadc_setup(0);                      // initial setup for DMA adc
   clock_configure_gpin(clk_gpout0, GPIN1, 1000, 1000);  // frequency count on GPIO22
 }
 
@@ -180,6 +188,11 @@ void CheckSW() {
   if ((ms - Millis)<200)
     return;
   Millis = ms;
+
+  if (wrate != 0) {
+    updown_rate(wrate);
+    wrate = 0;
+  }
 
 /* SW10 Menu
  * SW9  CH1 range down
@@ -599,46 +612,46 @@ void DrawText() {
     if (ch0_mode != MODE_OFF) {
       display_range(range0);
     } else {
-      display.print(F("CH2")); display_ac(CH1DCSW);
+      display.print("CH2"); display_ac(CH1DCSW);
     }
     set_line_color(1);
     if (ch1_mode != MODE_OFF && rate >= RATE_DUAL) {
       display_range(range1);
     } else {
-      display.print(F("CH1")); display_ac(CH0DCSW);
+      display.print("CH1"); display_ac(CH0DCSW);
     }
     set_line_color(2);
     display_rate();
     set_line_color(3);
-    if (rate > RATE_DMA) display.print(F("real"));
-    else display.print(F("DMA"));
+    if (rate > RATE_DMA) display.print("real");
+    else display.print("DMA");
     set_line_color(4);
     display_trig_mode();
     set_line_color(5);
-    display.print(trig_ch == ad_ch0 ? F("TG1") : F("TG2")); 
+    display.print(trig_ch == ad_ch0 ? "TG1" : "TG2"); 
     display.print(trig_edge == TRIG_E_UP ? char(0x18) : char(0x19)); 
     set_line_color(6);
-    display.print(F("Tlev")); 
+    display.print("Tlev"); 
     set_line_color(7);
-    display.print(Start ? F("RUN") : F("HOLD")); 
+    display.print(Start ? "RUN" : "HOLD"); 
     break;
   case 1:
     set_line_color(0);
-    display.print(F("CH1")); display_ac(CH0DCSW);
+    display.print("CH1"); display_ac(CH0DCSW);
     set_line_color(1);
     display_mode(ch0_mode);
     set_line_color(2);
     display_range(range0);
     set_line_color(3);
-    display.print(F("OFS1")); 
+    display.print("OFS1"); 
     set_line_color(4);
-    display.print(F("CH2")); display_ac(CH1DCSW);
+    display.print("CH2"); display_ac(CH1DCSW);
     set_line_color(5);
     display_mode(ch1_mode);
     set_line_color(6);
     display_range(range1);
     set_line_color(7);
-    display.print(F("OFS2"));
+    display.print("OFS2");
     break;
   case 2:
     set_line_color(0);
@@ -647,17 +660,17 @@ void DrawText() {
     display_rate();
     set_line_color(2);
     if (!fft_mode) {
-      display.print(F("FFT")); 
+      display.print("FFT"); 
       set_line_color(3);
-      display.print(F("FREQ")); 
+      display.print("FREQ"); 
       set_line_color(4);
-      display.print(F("VOLT")); 
+      display.print("VOLT"); 
       set_line_color(5);
-      display.print(F("PWM")); 
+      display.print("PWM"); 
       set_line_color(6);
-      display.print(F("DUTY")); 
+      display.print("DUTY"); 
       set_line_color(7);
-      display.print(F("FREQ"));
+      display.print("FREQ");
       if (pulse_mode && (item > 20 && item < 24))
         disp_pulse_frq();
     }
@@ -668,14 +681,14 @@ void DrawText() {
     set_line_color(1);
     display_rate();
     set_line_color(2);
-    display.print(F("DDS"));
+    display.print("DDS");
     set_line_color(3);
     disp_dds_wave();
     set_line_color(4);
-    display.print(F("FREQ"));
+    display.print("FREQ");
     if (dds_mode) disp_dds_freq();
     set_line_color(5);
-    display.print(F("FCNT"));
+    display.print("FCNT");
     fcount_disp();
     break;
   }
@@ -788,8 +801,8 @@ void scaleDataArray(byte ad_ch, int trig_point)
 {
   byte *pdata, ch_mode, range;
   short ch_off;
-  uint16_t *idata;
-  long a;
+  uint16_t *idata, *qdata;
+  long a, b;
 
   if (ad_ch == ad_ch1) {
     ch_off = ch1_off;
@@ -797,36 +810,70 @@ void scaleDataArray(byte ad_ch, int trig_point)
     range = range1;
     pdata = data[1];
     idata = &cap_buf1[trig_point];
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    qdata = payload+SAMPLES;
+#endif
   } else {
     ch_off = ch0_off;
     ch_mode = ch0_mode;
     range = range0;
     pdata = data[0];
     idata = &cap_buf[trig_point];
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    qdata = payload;
+#endif
   }
   for (int i = 0; i < SAMPLES; i++) {
-    a = ((*idata++ + ch_off) * VREF[range] + 2048) >> 12;
+    a = ((*idata + ch_off) * VREF[range] + 2048) >> 12;
     if (a > LCD_YMAX) a = LCD_YMAX;
     else if (a < 0) a = 0;
     if (ch_mode == MODE_INV)
       a = LCD_YMAX - a;
     *pdata++ = (byte) a;
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    b = ((*idata++ + ch_off) * VREF[range] + 40) / 80;
+    if (b > 4095) b = 4095;
+    else if (b < 0) b = 0;
+    if (ch_mode == MODE_INV)
+      b = 4095 - b;
+    *qdata++ = (int16_t) b;
+#else
+    ++idata;
+#endif
   }
 }
 
-byte adRead(byte ch, byte mode, int off)
+byte adRead(byte ch, byte mode, int off, int i)
 {
   if (ch == ad_ch1) {
     adc_select_input(1);
   } else {
     adc_select_input(0);
   }
-  long a = adc_read();
-  a = ((a+off)*VREF[ch == ad_ch0 ? range0 : range1]+2048) >> 12;
+  int16_t aa = adc_read();
+  long a = (((long)aa+off)*VREF[ch == ad_ch0 ? range0 : range1]+2048) >> 12;
   if (a > LCD_YMAX) a = LCD_YMAX;
   else if (a < 0) a = 0;
   if (mode == MODE_INV)
-    return LCD_YMAX - a;
+    a = LCD_YMAX - a;
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+  long b = (((long)aa+off)*VREF[ch == ad_ch0 ? range0 : range1] + 40) / 80;
+  if (b > 4095) b = 4095;
+  else if (b < 0) b = 0;
+  if (mode == MODE_INV)
+    b = 4095 - b;
+#endif
+  if (ch == ad_ch1) {
+    cap_buf1[i] = aa;
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    payload[i+SAMPLES] = b;
+#endif
+  } else {
+    cap_buf[i] = aa;
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    payload[i] = b;
+#endif
+  }
   return a;
 }
 
@@ -856,8 +903,6 @@ void loop() {
     adc_set_round_robin(0); // de-activate round robin
     set_trigger_ad();
     auto_time = pow(10, rate / 3);
-    if (rate < 7)
-      auto_time *= 10;
     if (trig_mode != TRIG_SCAN) {
       unsigned long st = millis();
       oad = adc_read();
@@ -928,8 +973,13 @@ void loop() {
       odat10 = odat11;      // save next previous data ch1
       odat01 = data[0][i];  // save previous data ch0
       odat11 = data[1][i];  // save previous data ch1
-      if (ch0_mode != MODE_OFF) data[0][i] = adRead(ad_ch0, ch0_mode, ch0_off);
-      if (ch1_mode != MODE_OFF) data[1][i] = adRead(ad_ch1, ch1_mode, ch1_off);
+      if (ch0_mode != MODE_OFF) data[0][i] = adRead(ad_ch0, ch0_mode, ch0_off, i);
+      if (ch1_mode != MODE_OFF) data[1][i] = adRead(ad_ch1, ch1_mode, ch1_off, i);
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+      if (ch0_mode == MODE_OFF) payload[0] = -1;
+      if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
+      rp2040.fifo.push_nb(1);   // notify Websocket server core
+#endif
       ClearAndDrawDot(i);     
       display.display();  // 42ms
     }
@@ -950,6 +1000,9 @@ void loop() {
 
 void draw_screen() {
   display.clearDisplay();
+  if (wfft != fft_mode) {
+    fft_mode = wfft;
+  }
   if (fft_mode) {
     DrawText();
     plotFFT();
@@ -957,8 +1010,16 @@ void draw_screen() {
     DrawGrid();
     ClearAndDrawGraph();
     if (!full_screen) DrawText();
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    if (ch0_mode == MODE_OFF) payload[0] = -1;
+    if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
+#endif
   }
   display.display();
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+  rp2040.fifo.push_nb(1);   // notify Websocket server core
+  delay(10);    // wait Web task to send it (adhoc fix)
+#endif
 }
 
 #define textINFO 54
@@ -975,7 +1036,7 @@ void measure_frequency() {
     display.print(waveFreq/1000.0, 0);
     display.print('k');
   }
-  display.print(F("Hz"));
+  display.print("Hz");
   if (fft_mode) return;
   display.setCursor(textINFO + 12, txtLINE1);
   display.print(waveDuty);  display.print('%');
@@ -997,11 +1058,11 @@ void measure_voltage() {
   float vmax = VRF * advalue(dmax, VREF[range0], ch0_mode, ch0_off) / 4096.0;
   float vmin = VRF * advalue(dmin, VREF[range0], ch0_mode, ch0_off) / 4096.0;
   display.setCursor(textINFO, txtLINE2);
-  display.print(F("max"));  display.print(vmax); if (vmax >= 0.0) display.print('V');
+  display.print("max");  display.print(vmax); if (vmax >= 0.0) display.print('V');
   display.setCursor(textINFO, txtLINE3);
-  display.print(F("avr"));  display.print(vavr); if (vavr >= 0.0) display.print('V');
+  display.print("avr");  display.print(vavr); if (vavr >= 0.0) display.print('V');
   display.setCursor(textINFO, txtLINE4);
-  display.print(F("min"));  display.print(vmin); if (vmin >= 0.0) display.print('V');
+  display.print("min");  display.print(vmin); if (vmin >= 0.0) display.print('V');
 }
 
 void sample_dual_us(unsigned int r) { // dual channel. r > 67
@@ -1073,8 +1134,15 @@ void plotFFT() {
   FFT.Windowing(vReal, FFT_N, FFT_WIN_TYP_HANN, FFT_FORWARD); // Weigh data
   FFT.Compute(vReal, vImag, FFT_N, FFT_FORWARD);          // Compute FFT
   FFT.ComplexToMagnitude(vReal, vImag, FFT_N);            // Compute magnitudes
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+  payload[0] = 0;
+#endif
   for (int i = 1; i < FFT_N/2; i++) {
-    int dat = constrain((int)(15.0 * log10(vReal[i]) - 20), 0, ylim);
+    float db = log10(vReal[i]);
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+    payload[i] = constrain((int)(1024.0 * (db - 1.6)), 0, 4095);
+#endif
+    int dat = constrain((int)(15.0 * db - 20), 0, ylim);
     display.drawFastVLine(i * 2, ylim - dat, dat, TXTCOLOR);
   }
   draw_scale();
@@ -1084,9 +1152,14 @@ void draw_scale() {
   int ylim = 56;
   float fhref, nyquist;
   display.setTextColor(TXTCOLOR);
-  display.setCursor(0, ylim); display.print(F("0Hz")); 
+  display.setCursor(0, ylim); display.print("0Hz"); 
   fhref = (float)HREF[rate];
   nyquist = 5.0e6 / fhref; // Nyquist frequency
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+  long inyquist = nyquist;
+  payload[FFT_N/2] = (short) (inyquist / 1000);
+  payload[FFT_N/2+1] = (short) (inyquist % 1000);
+#endif
   if (nyquist > 999.0) {
     nyquist = nyquist / 1000.0;
     if (nyquist > 99.5) {
@@ -1164,7 +1237,7 @@ void set_default() {
   duty = 128;     // PWM 50%
   p_range = 0;    // PWM range
   count = 12499;  // PWM 10kHz
-  dds_mode = true;
+  dds_mode = false;
   wave_id = 0;    // sine wave
   ifreq = 23841;  // 238.41Hz
 }
