@@ -1,7 +1,24 @@
-# RaspberryPiPicoOLEDOscilloscope
-Raspberry Pi Pico OLED dual channel oscilloscope with Pulse Generator, DDS Function Generator and Frequency Counter
+# RaspberryPiPicoWOLEDOscilloscope
+Raspberry Pi Pico W dual channel Oscilloscope for OLED and wireless WEB display
 
 <img src="DSC00020.jpg">
+
+This displays an oscilloscope screen on a 128x64 OLED and also on the WEB page simultaneusly.
+The settings are controled by the 5 direction switch and also on the WEB page.
+You can view the oscilloscope screen on the WEB browser of the PC or the tablet or the smartphone.
+It contains Pulse Generator, DDS Function Generator and Frequency Counter.
+
+The source codes can be compiled for Raspberry Pi Pico (not W) without WEB functions.
+
+For WEB operations, edit the source code WebTask.ino and replace your Access Point and the password.
+<pre>
+Edit:
+const char* ssid = "XXXX";
+const char* pass = "YYYY";
+To:
+const char* ssid = "Your Access Point";
+const char* pass = "Your Password";
+</pre>
 
 Develop environment is:<br>
 Arduino IDE 1.8.19<br>
