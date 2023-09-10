@@ -12,7 +12,7 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 const char* ssid = "XXXX";
 const char* pass = "YYYY";
 #else
-const char* apssid = "ESP32OSCILLO";
+const char* apssid = "RPPICOOSCILLO";
 const char* password = "12345678";
 const IPAddress ip(192, 168, 4, 1);
 const IPAddress subnet(255, 255, 255, 0);
