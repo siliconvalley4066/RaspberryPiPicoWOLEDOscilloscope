@@ -278,11 +278,9 @@ void handle_dds_onoff() {
   if (val != NULL) {
     Serial.println(val);
     if (val == "on") {
-      dds_setup();
-      dds_mode = true;
+      wdds = true;
     } else if (val == "off") {
-      dds_close();
-      dds_mode = false;
+      wdds = false;
     }
     server.send(200, "text/html", "OK");  // response 200, send OK
   }

@@ -120,7 +120,7 @@ bool full_screen = false;
 byte info_mode = 3; // Text information display mode
 int trigger_ad;
 float sys_clk;      // System clock is typically 125MHz, eventually 133MHz
-bool wfft;
+volatile bool wfft, wdds;
 
 #define LEFTPIN   18  // LEFT
 #define RIGHTPIN  19  // RIGHT
@@ -162,6 +162,7 @@ void setup(){
 #endif
   menu = item >> 3;
   wfft = fft_mode;
+  wdds = dds_mode;
   display.clearDisplay();
 //  DrawGrid();
 //  DrawText();
@@ -518,10 +519,10 @@ void menu3_sw(byte sw) {
   case 2: // DDS
     if (sw == 3) {        // +
       dds_setup();
-      dds_mode = true;
+      dds_mode = wdds = true;
     } else if (sw == 7) { // -
       dds_close();
-      dds_mode = false;
+      dds_mode = wdds = false;
     }
     break;
   case 3: // WAVE
@@ -996,6 +997,14 @@ void loop() {
 #ifdef EEPROM_START
   saveEEPROM();                         // save settings to EEPROM if necessary
 #endif
+  if (wdds != dds_mode) {
+    dds_mode = wdds;
+    if (dds_mode) {
+      dds_setup();
+    } else {
+      dds_close();
+    }
+  }
 }
 
 void draw_screen() {
