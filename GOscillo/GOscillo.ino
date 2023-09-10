@@ -430,9 +430,9 @@ void menu2_sw(byte sw) {
     break;
   case 2: // FFT mode
     if (sw == 3) {        // ON
-      fft_mode = true;
+      wfft = true;
     } else if (sw == 7) { // OFF
-      fft_mode = false;
+      wfft = false;
     }
     break;
   case 3: // Frequency and Duty display
@@ -562,7 +562,7 @@ void increment_item() {
   ++item;
   if (item > ITEM_MAX) item = 0;
   if (menu == 0 && item == 3) item = 4;
-  if (item < 16 || item > 18) fft_mode = false; // exit FFT mode
+  if (item < 16 || item > 18) wfft = false; // exit FFT mode
   menu = item >> 3;
 }
 
@@ -570,7 +570,7 @@ void decrement_item() {
   if (item > 0) --item;
   else item = ITEM_MAX;
   if (menu == 0 && item == 3) item = 2;
-  if (item < 16 || item > 18) fft_mode = false; // exit FFT mode
+  if (item < 16 || item > 18) wfft = false; // exit FFT mode
   menu = item >> 3;
 }
 
