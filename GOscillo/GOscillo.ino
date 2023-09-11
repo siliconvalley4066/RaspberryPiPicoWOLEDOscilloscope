@@ -75,7 +75,8 @@ const long VREF[] = {32, 64, 161, 322, 645}; // reference voltage 3.3V ->  32 : 
                                         //                        -> 322 : 100mV/div
                                         //                        -> 644 :  50mV/div
 //const int MILLIVOL_per_dot[] = {100, 50, 20, 10, 5}; // mV/dot
-const int ac_offset[] PROGMEM = {104, -204, -388, -450, -481};
+//const int ac_offset[] PROGMEM = {1792, -128, -1297, -1679, -1860}; // for OLED
+const int ac_offset[] PROGMEM = {3072, 512, -1043, -1552, -1804}; // for Web
 const int MODE_ON = 0;
 const int MODE_INV = 1;
 const int MODE_OFF = 2;
