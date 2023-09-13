@@ -302,7 +302,7 @@ String html;
   html = R"=====(
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>ESP32 Web Oscilloscope</title>
+<head><meta charset="utf-8"><title>Raspberry Pi Pico W Web Oscilloscope</title>
 <style>body { background: #fafafa; }
 canvas { display:block; background:#ffe; margin:0 auto; }</style>
 <script type="text/javascript">
@@ -562,7 +562,7 @@ async function postreset(button_id) {
 }
 </script>
 <body>
-<h3>ESP32 Web Oscilloscope ver. 1.30</h3>
+<h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.30</h3>
 <div style='float: left; margin-right: 10px'>
 <canvas id='cvs1' width='641' height='401' class='float'></canvas></div>
 <form id='rate0'>Rate: <label id="rate_area">%RATE% %REALDMA%</label>
@@ -747,7 +747,7 @@ void setup1() {
     delay(500);
   }
 #endif
-  // print out the IP address of the ESP32
+  // print out the IP address of the Raspberry Pi Pico W
   Serial.print("WiFi Connected. IP = "); Serial.println(WiFi.localIP());
 //  Serial.print("WiFi Connected. GW = "); Serial.println(WiFi.gatewayIP());
 //  Serial.print("WiFi Connected. DNS = "); Serial.println(WiFi.dnsIP());
