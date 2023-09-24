@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.25
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.26
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -46,6 +46,7 @@ arduinoFFT FFT = arduinoFFT();  // Create FFT object
 #define txtLINE2   16
 #define txtLINE3   24
 #define txtLINE4   32
+#define DISPTXT 103
 
 float waveFreq;                // frequency (Hz)
 float waveDuty;                // duty ratio (%)
@@ -743,7 +744,7 @@ void display_ac(byte pin) {
 void set_line_color(byte line) {
   if ((item & 0x7) == line) display.setTextColor(BGCOLOR, TXTCOLOR);  // highlight
   else display.setTextColor(TXTCOLOR, BGCOLOR);           // normal
-  display.setCursor(DISPLNG + 3, 8 * line); // locate curser for printing text
+  display.setCursor(DISPTXT, 8 * line); // locate curser for printing text
 }
 
 void DrawGrid(int x) {
@@ -999,12 +1000,12 @@ void loop() {
   saveEEPROM();                         // save settings to EEPROM if necessary
 #endif
   if (wdds != dds_mode) {
-    dds_mode = wdds;
-    if (dds_mode) {
+    if (wdds) {
       dds_setup();
     } else {
       dds_close();
     }
+    dds_mode = wdds;
   }
 }
 

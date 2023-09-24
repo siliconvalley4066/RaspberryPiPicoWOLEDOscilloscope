@@ -28,6 +28,21 @@ void pulse_init() {
 }
 
 #else
+double pulse_frq(void) {          // 7.48Hz <= freq <= 62.5MHz
+  int divide = range_div[p_range];
+  return(sys_clk / (((long)count + 1) * divide));
+}
+
+void set_pulse_frq(float freq) {  // 7.48Hz <= freq <= 62.5MHz
+  if (freq > (float)(sys_clk / 2)) freq = sys_clk / 2;
+  p_range = constrain(9 - int(10.0 - log(sys_clk / 32768.0 / freq)/log(2)), 0, 8);
+  int divide = range_div[p_range];
+  setCounter(divide);
+  count = (float)sys_clk/freq/(float)divide - 1;
+  pwm_set_wrap(slice_num, count);
+  setduty();
+}
+
 void pulse_init() {
   int divide;
   p_range = constrain(p_range, 0, 7);
@@ -80,7 +95,7 @@ void update_frq(int diff) {
   setCounter(divide);
   count = newCount;
   pwm_set_wrap(slice_num, count);
-  pwm_set_chan_level(slice_num, PWM_CHAN_A, (unsigned int)(((long)count * duty + 128) >> 8));
+  setduty();
 }
 
 void disp_pulse_frq(void) {
@@ -144,4 +159,8 @@ void pulse_start() {
 void pulse_close() {
   setCounter(0);              // stop clock of pulse generator
   pwm_set_enabled(slice_num, false);
+}
+
+void setduty(void) {
+  pwm_set_chan_level(slice_num, PWM_CHAN_A, (unsigned int)(((long)count * duty + 128) >> 8));
 }

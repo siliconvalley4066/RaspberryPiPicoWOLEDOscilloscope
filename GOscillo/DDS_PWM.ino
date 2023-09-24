@@ -123,10 +123,21 @@ void update_ifrq(long diff) {
   }
 }
 
+float set_freq(float dfreq) {
+  long newfreq = 100.0 * dfreq;
+  ifreq = constrain(newfreq, 1, 999999);
+  dds_set_freq();
+  return (dds_freq());
+}
+
+float dds_freq(void) {
+  return (float)ifreq * 0.01;
+}
+
 void disp_dds_freq(void) {
   display.setTextColor(TXTCOLOR, BGCOLOR);
   display.setCursor(72, 56);
-  display.print((double)ifreq * 0.01, 2); display.print("Hz");
+  display.print(dds_freq(), 2); display.print("Hz");
 }
 
 void disp_dds_wave(void) {
