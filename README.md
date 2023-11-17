@@ -2,6 +2,7 @@
 Raspberry Pi Pico W dual channel Oscilloscope for OLED and wireless WEB display
 
 <img src="DSC00020.jpg">
+<img src="RPPicoWEBOLED.png">
 
 This displays an oscilloscope screen on a 128x64 OLED and also on the WEB page simultaneusly.
 The settings are controled by the 5 direction switch and also on the WEB page.
