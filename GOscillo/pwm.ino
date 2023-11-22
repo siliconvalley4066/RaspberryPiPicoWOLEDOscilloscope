@@ -45,7 +45,7 @@ void set_pulse_frq(float freq) {  // 7.48Hz <= freq <= 62.5MHz
 
 void pulse_init() {
   int divide;
-  p_range = constrain(p_range, 0, 7);
+  p_range = constrain(p_range, 0, 8);
   divide = range_div[p_range];
 //  count = (unsigned int)(125e6 / 1000.0 / divide - 1);
 
@@ -151,12 +151,12 @@ void setCounter(int divide) {
   }
 }
 
-void pulse_start() {
+void pulse_start(void) {
   pwm_set_enabled(slice_num, true);
   setCounter(range_div[p_range]); // start clock of pulse generator
 }
 
-void pulse_close() {
+void pulse_close(void) {
   setCounter(0);              // stop clock of pulse generator
   pwm_set_enabled(slice_num, false);
 }

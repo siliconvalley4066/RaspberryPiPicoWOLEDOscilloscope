@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.27
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.28
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -48,11 +48,11 @@ arduinoFFT FFT = arduinoFFT();  // Create FFT object
 #define txtLINE4   32
 #define DISPTXT 103
 
-float waveFreq;                // frequency (Hz)
-float waveDuty;                // duty ratio (%)
-int dataMin;                   // buffer minimum value (smallest=0)
-int dataMax;                   //        maximum value (largest=1023)
-int dataAve;                   // 10 x average value (use 10x value to keep accuracy. so, max=10230)
+float waveFreq[2];             // frequency (Hz)
+float waveDuty[2];             // duty ratio (%)
+int dataMin[2];                // buffer minimum value (smallest=0)
+int dataMax[2];                //        maximum value (largest=4095)
+int dataAve[2];                // 10 x average value (use 10x value to keep accuracy. so, max=40950)
 int saveTimer;                 // remaining time for saving EEPROM
 int timeExec;                  // approx. execution time of current range setting (ms)
 extern byte duty;
@@ -95,7 +95,7 @@ const int TRIG_E_DN = 1;
 #define RATE_DMA 3
 #define RATE_DUAL 1
 #define RATE_ROLL 15
-#define ITEM_MAX 29
+#define ITEM_MAX 30
 const char Rates[RATE_NUM][5] PROGMEM = {"20us", "40us", "50us", "100u", "120u", "200u", "500u", " 1ms", " 2ms", " 5ms", "10ms", "20ms", "50ms", "0.1s", "0.2s", "0.5s", " 1s ", " 2s ", " 5s ", " 10s"};
 const unsigned long HREF[] PROGMEM = {20, 40, 50, 100, 120, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
 #define RANGE_MIN 0
@@ -128,7 +128,6 @@ volatile bool wfft, wdds;
 #define RIGHTPIN  19  // RIGHT
 #define UPPIN     20  // UP
 #define DOWNPIN   21  // DOWN
-#define CALPIN    0
 #define CH0DCSW   16  // DC/AC switch ch0
 #define CH1DCSW   17  // DC/AC switch ch1
 //#define I2CSDA    4   // I2C SDA
@@ -138,6 +137,8 @@ volatile bool wfft, wdds;
 #define CH1COLOR  WHITE
 #define CH2COLOR  WHITE
 #define TXTCOLOR  WHITE
+#define LED_ON    HIGH
+#define LED_OFF   LOW
 
 void setup(){
   pinMode(CH0DCSW, INPUT_PULLUP);   // CH1 DC/AC
@@ -147,8 +148,6 @@ void setup(){
   pinMode(RIGHTPIN, INPUT_PULLUP);  // right
   pinMode(LEFTPIN, INPUT_PULLUP);   // left
   pinMode(LED_BUILTIN, OUTPUT);     // sets the digital pin as output
-//  pinMode(CALPIN, OUTPUT);          // PWM out
-//  pinMode(2, OUTPUT);               // DDS out
 #ifdef DISPLAY_IS_SSD1306
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // select 3C or 3D (set your OLED I2C address)
 #else
@@ -542,7 +541,14 @@ void menu3_sw(byte sw) {
       update_ifrq(-diff);
     }
     break;
-  case 5: // Frequency Counter
+  case 5: // Measure channel
+    if (sw == 3) {        // CH2
+      info_mode |= 4;
+    } else if (sw == 7) { // CH1
+      info_mode &= ~4;
+    }
+    break;
+  case 6: // Frequency Counter
     if (sw == 3 && rate <= RATE_MAX) {  // on
       fcount_mode = true;
     } else if (sw == 7) {               // off
@@ -564,7 +570,7 @@ void menu_updown(byte sw) {
 void increment_item() {
   ++item;
   if (item > ITEM_MAX) item = 0;
-  if (menu == 0 && item == 3) item = 4;
+  if (item == 3) item = 4;      // skip real/DMA
   if (item < 16 || item > 18) wfft = false; // exit FFT mode
   menu = item >> 3;
 }
@@ -572,7 +578,7 @@ void increment_item() {
 void decrement_item() {
   if (item > 0) --item;
   else item = ITEM_MAX;
-  if (menu == 0 && item == 3) item = 2;
+  if (item == 3) item = 2;      // skip real/DMA
   if (item < 16 || item > 18) wfft = false; // exit FFT mode
   menu = item >> 3;
 }
@@ -618,7 +624,7 @@ void DrawText() {
       display.print("CH2"); display_ac(CH1DCSW);
     }
     set_line_color(1);
-    if (ch1_mode != MODE_OFF && rate >= RATE_DUAL) {
+    if (ch1_mode != MODE_OFF) {
       display_range(range1);
     } else {
       display.print("CH1"); display_ac(CH0DCSW);
@@ -689,19 +695,28 @@ void DrawText() {
     disp_dds_wave();
     set_line_color(4);
     display.print("FREQ");
-    if (dds_mode) disp_dds_freq();
+    if (dds_mode && (item > 25 && item < 29)) {
+      display.setTextColor(TXTCOLOR, BGCOLOR);
+      display.setCursor(72, 56);
+      disp_dds_freq();
+    }
     set_line_color(5);
+    if (info_mode & 4)
+      display.print("MSR2");
+    else
+      display.print("MSR1");
+    set_line_color(6);
     display.print("FCNT");
     fcount_disp();
     break;
   }
-//  if (info_mode && Start) {
-  if (info_mode) {
-    dataAnalize();
+  if (info_mode & 3) {
+    int ch = (info_mode & 4) ? 1 : 0;
+    dataAnalize(ch);
     if (info_mode & 1)
-      measure_frequency();
+      measure_frequency(ch);
     if (info_mode & 2)
-      measure_voltage();
+      measure_voltage(ch);
   }
   if (!full_screen && !fft_mode)
     display.drawFastHLine(DISPLNG, LCD_YMAX - trig_lv, 3, GRIDCOLOR); // draw trig_lv tic
@@ -717,7 +732,7 @@ void fcount_disp() {
 //  fcount = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_PLL_SYS_CLKSRC_PRIMARY);
 //  fcount = fcount * freq_ratio; // compensate the ceramic osc
   display.setTextColor(TXTCOLOR, BGCOLOR);
-  display.setCursor(127-6*sprintf(s, "%lukHz", fcount), 48);
+  display.setCursor(127-6*sprintf(s, "%lukHz", fcount), 56);
   display.print(s);
 }
 
@@ -760,7 +775,7 @@ void ClearAndDrawGraph() {
   int disp_leng;
   if (full_screen) disp_leng = SAMPLES-1;
   else disp_leng = DISPLNG-1;
-  bool ch1_active = ch1_mode != MODE_OFF && rate >= RATE_DUAL;
+  bool ch1_active = ch1_mode != MODE_OFF && !(rate < RATE_DUAL && ch0_mode != MODE_OFF);
 #if 0
   for (int x=0; x<DISPLNG; x++) {
     display.drawPixel(x, LCD_YMAX-data[sample+0][x], CH1COLOR);
@@ -786,8 +801,10 @@ void ClearAndDrawDot(int i) {
     display.drawPixel(i, LCD_YMAX-data[sample+1][i], CH2COLOR);
   }
 #else
-  if (i < 1)
+  if (i < 1) {
+    DrawGrid(i);
     return;
+  }
   if (ch0_mode != MODE_OFF) {
     display.drawLine(i-1, LCD_YMAX-odat00,   i, LCD_YMAX-odat01, BGCOLOR);
     display.drawLine(i-1, LCD_YMAX-data[0][i-1], i, LCD_YMAX-data[0][i], CH1COLOR);
@@ -901,11 +918,11 @@ void loop() {
   unsigned long auto_time;
 
   timeExec = 100;
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, LED_ON);
   if (rate > RATE_DMA) {
     adc_set_round_robin(0); // de-activate round robin
     set_trigger_ad();
-    auto_time = pow(10, rate / 3);
+    auto_time = pow(10, rate / 3) + 5;
     if (trig_mode != TRIG_SCAN) {
       unsigned long st = millis();
       oad = adc_read();
@@ -935,7 +952,7 @@ void loop() {
   if (rate < RATE_ROLL && Start) {
 
     if (rate == 0) {        // DMA, channel 0 only 2us sampling (500ksps)
-      sample_2us(ad_ch0);
+      sample_2us();
     } else if (rate <= RATE_DMA) {  // DMA, dual channel 4us,5us,10us sampling (250ksps,200ksps,100ksps)
       sample_4us();
     } else if (rate > RATE_DMA && rate <= 8) {  // dual channel 12us, 20us, 50us, 100us, 200us sampling
@@ -943,7 +960,7 @@ void loop() {
     } else {                // dual channel .5ms, 1ms, 2ms, 5ms, 10ms, 20ms sampling
       sample_dual_ms(HREF[rate] / 10);
     }
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_BUILTIN, LED_OFF);
     draw_screen();
   } else if (Start) { // 50ms - 1000ms sampling
     timeExec = 5000;
@@ -987,7 +1004,7 @@ void loop() {
       display.display();  // 42ms
     }
     // Serial.println(millis()-st0);
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_BUILTIN, LED_OFF);
     DrawGrid();
     if (!full_screen) DrawText();
   } else {
@@ -1034,40 +1051,32 @@ void draw_screen() {
 }
 
 #define textINFO 54
-void measure_frequency() {
+void measure_frequency(int ch) {
   int x1, x2;
-  freqDuty();
+  freqDuty(ch);
   display.setTextColor(TXTCOLOR, BGCOLOR);
   display.setCursor(textINFO, txtLINE0);
-  if (waveFreq < 999.5)
-    display.print(waveFreq);
-  else if (waveFreq < 999999.5)
-    display.print(waveFreq, 0);
+  float freq = waveFreq[ch];
+  if (freq < 999.5)
+    display.print(freq);
+  else if (freq < 999999.5)
+    display.print(freq, 0);
   else {
-    display.print(waveFreq/1000.0, 0);
+    display.print(freq/1000.0, 0);
     display.print('k');
   }
   display.print("Hz");
   if (fft_mode) return;
   display.setCursor(textINFO + 12, txtLINE1);
-  display.print(waveDuty);  display.print('%');
+  display.print(waveDuty[ch], 1);  display.print('%');
 }
 
-void measure_voltage() {
-  int x, dave, dmax, dmin;
+void measure_voltage(int ch) {
+  int x;
   if (fft_mode) return;
-  if (ch0_mode == MODE_INV) {
-    dave = (LCD_YMAX) * 10 - dataAve;
-    dmax = dataMin;
-    dmin = dataMax;
-  } else {
-    dave = dataAve;
-    dmax = dataMax;
-    dmin = dataMin;
-  }
-  float vavr = VRF * ((dave * 409.6) / VREF[range0] - ch0_off) / 4096.0;
-  float vmax = VRF * advalue(dmax, VREF[range0], ch0_mode, ch0_off) / 4096.0;
-  float vmin = VRF * advalue(dmin, VREF[range0], ch0_mode, ch0_off) / 4096.0;
+  float vavr = VRF * dataAve[ch] / 40950.0;
+  float vmax = VRF * dataMax[ch] / 4095.0;
+  float vmin = VRF * dataMin[ch] / 4095.0;
   display.setCursor(textINFO, txtLINE2);
   display.print("max");  display.print(vmax); if (vmax >= 0.0) display.print('V');
   display.setCursor(textINFO, txtLINE3);
@@ -1238,12 +1247,12 @@ void set_default() {
   ch1_off = 2048;
   rate = 6;
   trig_mode = TRIG_AUTO;
-  trig_lv = 15;
+  trig_lv = 20;
   trig_edge = TRIG_E_UP;
   trig_ch = ad_ch0;
   fft_mode = false;
   info_mode = 1;  // display frequency and duty.  Voltage display is off
-  item = 2;       // menu item
+  item = 0;       // menu item
   pulse_mode = true;
   duty = 128;     // PWM 50%
   p_range = 0;    // PWM range
@@ -1288,7 +1297,7 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   if (trig_ch != ad_ch0 && trig_ch != ad_ch1) ++error;
   fft_mode = EEPROM.read(p++);              // fft_mode
   info_mode = EEPROM.read(p++);             // info_mode
-  if (info_mode > 3) ++error;
+  if (info_mode > 7) ++error;
   item = EEPROM.read(p++);                  // item
   if (item > ITEM_MAX) ++error;
   pulse_mode = EEPROM.read(p++);            // pulse_mode

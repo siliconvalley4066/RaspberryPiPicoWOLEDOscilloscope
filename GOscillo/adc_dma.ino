@@ -30,22 +30,26 @@
 dma_channel_config cfg;
 uint dma_chan;
 
-void sample_2us(byte ad_ch) {
-  int t;
-  adc_set_round_robin(0);
-  if (ad_ch == ad_ch1) {
-    adc_select_input(1);
-  } else {
-    adc_select_input(0);
-  }
+void sample_2us() {
+  byte ch;
+  uint16_t *p;
   if (orate > RATE_DMA)
     dmaadc_setup(0);
   else if (orate != rate)
     adc_set_clkdiv(0);
   orate = rate;
-  sample_dma(cap_buf);
-  t = trigger_point();
-  scaleDataArray(ad_ch, t);
+  if (ch0_mode == MODE_OFF && ch1_mode != MODE_OFF) {
+    ch = ad_ch1;
+    p = cap_buf1;
+    adc_select_input(CAPTURE_CHANNEL1);
+  } else {
+    ch = ad_ch0;
+    p = cap_buf;
+    adc_select_input(CAPTURE_CHANNEL0);
+  }
+  adc_set_round_robin(0);
+  sample_dma(p);
+  scaleDataArray(ch, trigger_point());
 }
 
 void sample_4us() {

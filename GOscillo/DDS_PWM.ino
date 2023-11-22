@@ -135,8 +135,6 @@ float dds_freq(void) {
 }
 
 void disp_dds_freq(void) {
-  display.setTextColor(TXTCOLOR, BGCOLOR);
-  display.setCursor(72, 56);
   display.print(dds_freq(), 2); display.print("Hz");
 }
 
