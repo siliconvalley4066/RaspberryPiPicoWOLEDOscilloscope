@@ -29,7 +29,7 @@ CPU speed 125MHz<br>
 Libraries:<br>
 Adafruit_SSD1306<br>
 Adafruit_SH110X<br>
-arduinoFFT by Enrique Condes 1.6.1<br>
+arduinoFFT by Enrique Condes 2.0.0<br>
 
 Schematics:<br>
 <img src="RPPicoGOscillo.png">
