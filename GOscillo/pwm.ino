@@ -99,7 +99,7 @@ void update_frq(int diff) {
 }
 
 void disp_pulse_frq(void) {
-  float freq;        // 14.90Hz <= freq <= 62.5MHz
+  float freq;
   int divide = range_div[p_range];
   freq = sys_clk / (((long)count + 1) * divide);
   display.setTextColor(TXTCOLOR, BGCOLOR);

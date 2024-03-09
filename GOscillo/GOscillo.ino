@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.28
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.29
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -39,7 +39,9 @@ Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 
 #endif
 #include "arduinoFFT.h"
 #define FFT_N 128
-arduinoFFT FFT = arduinoFFT();  // Create FFT object
+double vReal[FFT_N]; // Real part array, actually float type
+double vImag[FFT_N]; // Imaginary part array
+ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, FFT_N, 1.0);  // Create FFT object
 
 #define txtLINE0   0
 #define txtLINE1   8
@@ -1140,9 +1142,6 @@ void sample_dual_ms(unsigned int r) { // dual channel. r > 500
   scaleDataArray(ad_ch1, 0);
 }
 
-double vReal[FFT_N]; // Real part array, actually float type
-double vImag[FFT_N]; // Imaginary part array
-
 void plotFFT() {
   int ylim = 56;
 
@@ -1150,10 +1149,10 @@ void plotFFT() {
     vReal[i] = cap_buf[i];
     vImag[i] = 0.0;
   }
-  FFT.DCRemoval(vReal, FFT_N);
-  FFT.Windowing(vReal, FFT_N, FFT_WIN_TYP_HANN, FFT_FORWARD); // Weigh data
-  FFT.Compute(vReal, vImag, FFT_N, FFT_FORWARD);          // Compute FFT
-  FFT.ComplexToMagnitude(vReal, vImag, FFT_N);            // Compute magnitudes
+  FFT.dcRemoval();
+  FFT.windowing(FFTWindow::Hann, FFTDirection::Forward);  // Weigh data
+  FFT.compute(FFTDirection::Forward);                     // Compute FFT
+  FFT.complexToMagnitude();                               // Compute magnitudes
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
   payload[0] = 0;
 #endif
@@ -1173,7 +1172,7 @@ void draw_scale() {
   float fhref, nyquist;
   display.setTextColor(TXTCOLOR);
   display.setCursor(0, ylim); display.print("0Hz"); 
-  fhref = (float)HREF[rate];
+  fhref = freqhref();
   nyquist = 5.0e6 / fhref; // Nyquist frequency
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
   long inyquist = nyquist;
@@ -1197,6 +1196,10 @@ void draw_scale() {
     display.setCursor(58, ylim); display.print(nyquist/2,0);
     display.setCursor(110, ylim); display.print(nyquist,0);
   }
+}
+
+float freqhref() {
+  return (float) HREF[rate];
 }
 
 #ifdef EEPROM_START
