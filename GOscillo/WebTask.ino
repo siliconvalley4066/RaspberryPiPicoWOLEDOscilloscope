@@ -94,7 +94,7 @@ void handle_rate() {
     }
     String strrate;
     strrate = Rates[nrate];
-    server.send(200, "text/html", strrate+((nrate > RATE_DMA)?"":" DMA"));  // response 200, send OK
+    server.send(200, "text/html", strrate+((nrate > RATE_DMA)?"":((nrate > RATE_MAG)?" DMA":" MAG")));  // response 200, send OK
   }
 }
 
@@ -642,7 +642,7 @@ async function post_duty() {
 }
 </script>
 <body>
-<h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.32</h3>
+<h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.33</h3>
 <div style='float: left; margin-right: 10px'>
 <canvas id='cvs1' width='641' height='401' class='float'></canvas></div>
 <form id='rate0'>Rate: <label id="rate_area">%RATE% %REALDMA%</label>
@@ -792,7 +792,7 @@ Hz</label>
     ch2acdc = "DC ";
 
   html.replace("%RATE%", Rates[rate]);
-  html.replace("%REALDMA%", (rate > RATE_DMA)?"":"DMA");
+  html.replace("%REALDMA%", (rate > RATE_DMA)?"":((rate > RATE_MAG)?"DMA":"MAG"));
   html.replace("%RANGE1%", ch1acdc + Ranges[range0]);
   html.replace("%RANGE2%", ch2acdc + Ranges[range1]);
   html.replace("%TRIGCH%", trig_ch==ad_ch0?"ch1":"ch2");

@@ -55,10 +55,8 @@ void sample_2us() {
 void sample_4us() {
   int t;
   float clock_div;
-  if (rate == 3) {        // dual channel 10us sampling (100ksps)
+  if (rate == 4) {        // dual channel 10us sampling (100ksps)
     clock_div = 240;
-  } else if (rate == 2) { // dual channel 5us sampling (200ksps)
-    clock_div = 120;
   } else {                // dual channel 4us sampling (250ksps)
     clock_div = 0;
   }

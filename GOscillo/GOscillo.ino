@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.29
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.30
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -94,12 +94,14 @@ const int TRIG_E_DN = 1;
 #define RATE_MIN 0
 #define RATE_MAX 19
 #define RATE_NUM 20
-#define RATE_DMA 3
-#define RATE_DUAL 1
+#define RATE_ILV 2
+#define RATE_DMA 4
+#define RATE_DUAL 3
 #define RATE_ROLL 15
+#define RATE_MAG 1
 #define ITEM_MAX 30
-const char Rates[RATE_NUM][5] PROGMEM = {"20us", "40us", "50us", "100u", "120u", "200u", "500u", " 1ms", " 2ms", " 5ms", "10ms", "20ms", "50ms", "0.1s", "0.2s", "0.5s", " 1s ", " 2s ", " 5s ", " 10s"};
-const unsigned long HREF[] PROGMEM = {20, 40, 50, 100, 120, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
+const char Rates[RATE_NUM][5] PROGMEM = {" 2us", " 4us", "20us", "40us", "100u", "200u", "500u", " 1ms", " 2ms", " 5ms", "10ms", "20ms", "50ms", "0.1s", "0.2s", "0.5s", " 1s ", " 2s ", " 5s ", " 10s"};
+const unsigned long HREF[] PROGMEM = {20, 20, 20, 40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
 #define RANGE_MIN 0
 #define RANGE_MAX 4
 #define VRF 3.3
@@ -396,7 +398,11 @@ void menu1_sw(byte sw) {
       else
         ch1_mode = MODE_ON;
     } else if (sw == 7) { // CH1 - ON/OFF
-      if (ch1_mode == MODE_OFF)
+      if (rate <= RATE_ILV) {
+        ch0_mode = MODE_OFF;
+        ch1_mode = MODE_ON;
+        display.fillScreen(BGCOLOR);
+      } else if (ch1_mode == MODE_OFF)
         ch1_mode = MODE_ON;
       else
         ch1_mode = MODE_OFF;
@@ -635,7 +641,8 @@ void DrawText() {
     display_rate();
     set_line_color(3);
     if (rate > RATE_DMA) display.print("real");
-    else display.print("DMA");
+    else if (rate > RATE_MAG) display.print("DMA");
+    else display.print("MAG");
     set_line_color(4);
     display_trig_mode();
     set_line_color(5);
@@ -823,7 +830,7 @@ void scaleDataArray(byte ad_ch, int trig_point)
 {
   byte *pdata, ch_mode, range;
   short ch_off;
-  uint16_t *idata, *qdata;
+  uint16_t *idata, *qdata, *rdata;
   long a, b;
 
   if (ad_ch == ad_ch1) {
@@ -833,7 +840,7 @@ void scaleDataArray(byte ad_ch, int trig_point)
     pdata = data[1];
     idata = &cap_buf1[trig_point];
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
-    qdata = payload+SAMPLES;
+    qdata = rdata = payload+SAMPLES;
 #endif
   } else {
     ch_off = ch0_off;
@@ -842,7 +849,7 @@ void scaleDataArray(byte ad_ch, int trig_point)
     pdata = data[0];
     idata = &cap_buf[trig_point];
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
-    qdata = payload;
+    qdata = rdata = payload;
 #endif
   }
   for (int i = 0; i < SAMPLES; i++) {
@@ -863,6 +870,18 @@ void scaleDataArray(byte ad_ch, int trig_point)
     ++idata;
 #endif
   }
+  if (rate == 0) {
+    mag10(data[sample+0]);
+  } else if (rate == 1) {
+    mag5(data[sample+0]);
+  }
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+  if (rate == 0) {
+    mag10(rdata);
+  } else if (rate == 1) {
+    mag5(rdata);
+  }
+#endif
 }
 
 byte adRead(byte ch, byte mode, int off, int i)
@@ -953,11 +972,11 @@ void loop() {
   // sample and draw depending on the sampling rate
   if (rate < RATE_ROLL && Start) {
 
-    if (rate == 0) {        // DMA, channel 0 only 2us sampling (500ksps)
+    if (rate <= 2) {        // DMA, channel 0 only 2us sampling (500ksps)
       sample_2us();
-    } else if (rate <= RATE_DMA) {  // DMA, dual channel 4us,5us,10us sampling (250ksps,200ksps,100ksps)
+    } else if (rate <= RATE_DMA) {  // DMA, dual channel 4us,10us sampling (250ksps,100ksps)
       sample_4us();
-    } else if (rate > RATE_DMA && rate <= 8) {  // dual channel 12us, 20us, 50us, 100us, 200us sampling
+    } else if (rate > RATE_DMA && rate <= 8) {  // dual channel 20us, 50us, 100us, 200us sampling
       sample_dual_us(HREF[rate] / 10);
     } else {                // dual channel .5ms, 1ms, 2ms, 5ms, 10ms, 20ms sampling
       sample_dual_ms(HREF[rate] / 10);

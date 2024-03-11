@@ -134,6 +134,7 @@ float dds_freq(void) {
   return (float)ifreq * 0.01;
 }
 
+#ifndef NOLCD
 void disp_dds_freq(void) {
   display.print(dds_freq(), 2); display.print("Hz");
 }
@@ -141,3 +142,4 @@ void disp_dds_freq(void) {
 void disp_dds_wave(void) {
   display.print(Wavename[wave_id]); 
 }
+#endif
