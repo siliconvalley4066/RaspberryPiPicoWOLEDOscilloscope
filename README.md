@@ -31,6 +31,10 @@ Adafruit_SSD1306<br>
 Adafruit_SH110X<br>
 arduinoFFT by Enrique Condes 2.0.0<br>
 
+2usec/div range is 10 times magnification at 500ksps.<br>
+4usec/div range is 5 times magnification at 500ksps.<br>
+The magnification applies sin(x)/x interpolation.
+
 Schematics:<br>
 <img src="RPPicoGOscillo.png">
 
