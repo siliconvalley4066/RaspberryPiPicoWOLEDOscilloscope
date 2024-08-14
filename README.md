@@ -48,7 +48,8 @@ arduinoFFT by Enrique Condes 2.0.0<br>
 The magnification applies sin(x)/x interpolation.
 
 Schematics:<br>
-<img src="RPPicoGOscillo.png">
+<img src="RPPicoGOscillo.png"><br>
+There is no software support for input attenuation yet.
 
 Schematics for RP2040-zero:<br>
 Select the board "Waveshare RP2040 Zero" in the Arduino IDE<br>
