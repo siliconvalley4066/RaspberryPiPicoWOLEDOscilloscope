@@ -10,8 +10,8 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 // WiFi information
 //#define WIFI_ACCESS_POINT
 #ifndef WIFI_ACCESS_POINT
-const char* ssid = "XXXX";
-const char* pass = "YYYY";
+const char* ssid = "TP-LINK_257F";
+const char* pass = "82773038";
 #else
 const char* apssid = "RPPICOOSCILLO";
 const char* password = "12345678";
@@ -44,7 +44,7 @@ void handleRoot(void) {
     handle_dds_freq();
     handle_pwm_duty();
     handle_pwm_freq();
-    saveTimer = 5000;     // set EEPROM save timer to 5 secnd
+    saveTimer = 5000;     // set EEPROM save timer to 5 second
     return;
   }
   index_html(NULL);
