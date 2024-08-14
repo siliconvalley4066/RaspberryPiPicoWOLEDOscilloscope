@@ -50,5 +50,10 @@ The magnification applies sin(x)/x interpolation.
 Schematics:<br>
 <img src="RPPicoGOscillo.png">
 
+Schematics for RP2040-zero:<br>
+Select the board "Waveshare RP2040 Zero" in the Arduino IDE<br>
+<img src="RP2040ZeroGOscillo.png"><br>
+There is no software support for input attenuation yet.
+
 Description is here, although it is written in Japanese language:
 http://harahore.g2.xrea.com/RaspberryPiPico/RPPicoGOscillo.html
