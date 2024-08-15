@@ -42,6 +42,7 @@ Libraries:<br>
 Adafruit_SSD1306<br>
 Adafruit_SH110X<br>
 arduinoFFT by Enrique Condes 2.0.0<br>
+arduinoWebSockets from https://github.com/Links2004/arduinoWebSockets
 
 2usec/div range is 10 times magnification at 500ksps.<br>
 4usec/div range is 5 times magnification at 500ksps.<br>
