@@ -44,6 +44,8 @@ TFT_eSPI 2.5.43<br>
 arduinoFFT by Enrique Condes 2.0.0<br>
 arduinoWebSockets from https://github.com/Links2004/arduinoWebSockets
 
+You need to customize the TFT_espi library by referring to the TFT_espi folder here.
+
 2usec/div range is 10 times magnification at 500ksps.<br>
 4usec/div range is 5 times magnification at 500ksps.<br>
 The magnification applies sin(x)/x interpolation.
