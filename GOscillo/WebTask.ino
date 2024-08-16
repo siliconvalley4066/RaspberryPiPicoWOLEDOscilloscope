@@ -10,8 +10,8 @@ WebSocketsServer webSocket = WebSocketsServer(81);
 // WiFi information
 //#define WIFI_ACCESS_POINT
 #ifndef WIFI_ACCESS_POINT
-const char* ssid = "TP-LINK_257F";
-const char* pass = "82773038";
+const char* ssid = "XXXX";
+const char* pass = "YYYY";
 #else
 const char* apssid = "RPPICOOSCILLO";
 const char* password = "12345678";
