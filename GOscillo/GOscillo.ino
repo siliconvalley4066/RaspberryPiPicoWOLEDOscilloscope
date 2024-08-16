@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.31
+ * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.00
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -12,25 +12,20 @@
  * Copyright (c) 2009, Noriaki Mitsunaga
  */
 
-#include <Adafruit_GFX.h>
+//#define NOLCD
+
+#ifndef NOLCD
+#include <TFT_eSPI.h>
+#include <SPI.h>
+TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite display = TFT_eSprite(&tft);  // Declare Sprite object "display" with pointer to "tft" object
+#endif
+
 #include "hardware/clocks.h"
 #include "hardware/adc.h"
 #define GPIN1 (22)
 
 #define BUTTON5DIR
-#define DISPLAY_IS_SSD1306
-#define SCREEN_WIDTH   128              // OLED display width
-#define SCREEN_HEIGHT   64              // OLED display height
-#define OLED_RESET      -1      // Reset pin # (or -1 if sharing Arduino reset pin)
-#ifdef DISPLAY_IS_SSD1306
-#include <Adafruit_SSD1306.h>
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-#else
-#include <Adafruit_SH110X.h>
-Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-#define WHITE 1
-#define BLACK 0
-#endif
 #ifndef ARDUINO_ARCH_MBED_RP2040
 #define EEPROM_START 0
 #endif
@@ -49,14 +44,15 @@ ArduinoFFT<double> FFT = ArduinoFFT<double>(vReal, vImag, FFT_N, 1.0);  // Creat
 Adafruit_NeoPixel pixels(1, DIN_PIN, NEO_GRB + NEO_KHZ800);
 #endif
 
-#define txtLINE0   0
-#define txtLINE1   8
-#define txtLINE2   16
-#define txtLINE3   24
-#define txtLINE4   32
-#define txtLINE6   48
-#define txtLINE7   56
-#define DISPTXT 103
+#define txtLINE0   1
+#define txtLINE1   11
+#define txtLINE2   21
+#define txtLINE3   31
+#define txtLINE4   41
+#define txtLINE5   51
+#define txtLINE6   61
+#define txtLINE7   71
+#define DISPTXT 136
 
 float waveFreq[2];             // frequency (Hz)
 float waveDuty[2];             // duty ratio (%)
@@ -71,12 +67,12 @@ extern unsigned short count;
 extern long ifreq;
 extern byte wave_id;
 
-const int LCD_WIDTH = 128;
-const int LCD_HEIGHT = 64;
-const int LCD_YMAX = 60;
-const int SAMPLES = 128;
-const int NSAMP = 512;
-const int DISPLNG = 100;
+const int LCD_WIDTH = 160;
+const int LCD_HEIGHT = 80;
+const int LCD_YMAX = 79;
+const int SAMPLES = 160;
+const int NSAMP = 640;
+const int DISPLNG = 130;
 const int DOTS_DIV = 10;
 const byte ad_ch0 = 26;                 // Analog pin for channel 0
 const byte ad_ch1 = 27;                 // Analog pin for channel 1
@@ -141,7 +137,7 @@ float sys_clk;      // System clock is typically 125MHz, eventually 133MHz
 volatile bool wfft, wdds;
 
 #if defined(ARDUINO_WAVESHARE_RP2040_ZERO)
-#define LEFTPIN    8  // LEFT
+#define LEFTPIN   14  // LEFT
 #define RIGHTPIN   7  // RIGHT
 #define UPPIN      6  // UP
 #define DOWNPIN    3  // DOWN
@@ -157,12 +153,12 @@ volatile bool wfft, wdds;
 #endif
 //#define I2CSDA    4   // I2C SDA
 //#define I2CSCL    5   // I2C SCL
-#define BGCOLOR   BLACK
-#define GRIDCOLOR WHITE
-#define CH1COLOR  WHITE
-#define CH2COLOR  WHITE
-#define TXTCOLOR  WHITE
-#define TRGCOLOR  WHITE
+#define BGCOLOR   TFT_BLACK
+#define GRIDCOLOR TFT_DARKGREY
+#define CH1COLOR  TFT_GREEN
+#define CH2COLOR  TFT_YELLOW
+#define TXTCOLOR  TFT_WHITE
+#define TRGCOLOR  TFT_SKYBLUE
 #define LED_ON    HIGH
 #define LED_OFF   LOW
 
@@ -178,11 +174,11 @@ void setup(){
 #else
   pinMode(LED_BUILTIN, OUTPUT);     // sets the digital pin as output
 #endif
-#ifdef DISPLAY_IS_SSD1306
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // select 3C or 3D (set your OLED I2C address)
-#else
-  display.begin(0x3c, true);                  // initialise the library
-#endif
+  tft.init();   // initialize a ST7735S chip
+  tft.setRotation(3);
+// Optionally set colour depth to 8 or 16 bits, default is 16 if not spedified
+  display.setColorDepth(8);
+  display.createSprite(LCD_WIDTH, LCD_HEIGHT);
 
 //  Serial.begin(115200);
 #ifdef EEPROM_START
@@ -194,10 +190,8 @@ void setup(){
   menu = item >> 3;
   wfft = fft_mode;
   wdds = dds_mode;
-  display.clearDisplay();
 //  DrawGrid();
 //  DrawText();
-//  display.display();
   sys_clk = (float) clock_get_hz(clk_sys);  // identify 125MHz or 133MHz or else
   if (pulse_mode)
     pulse_init();                       // calibration pulse output
@@ -213,13 +207,13 @@ void DrawGrid() {
   if (full_screen) disp_leng = SAMPLES;
   else disp_leng = DISPLNG;
   for (int x=0; x<=disp_leng; x += 2) { // Horizontal Line
-    for (int y=0; y<=LCD_YMAX; y += DOTS_DIV) {
+    for (int y=LCD_YMAX; y>=0; y -= DOTS_DIV) {
       display.drawPixel(x, y, GRIDCOLOR);
 //      CheckSW();
     }
   }
   for (int x=0; x<=disp_leng; x += DOTS_DIV ) { // Vertical Line
-    for (int y=0; y<=LCD_YMAX; y += 2) {
+    for (int y=LCD_YMAX; y>=0; y -= 2) {
       display.drawPixel(x, y, GRIDCOLOR);
 //      CheckSW();
     }
@@ -263,15 +257,15 @@ void display_ac(byte pin) {
 void set_line_color(byte line) {
   if ((item & 0x7) == line) display.setTextColor(BGCOLOR, TXTCOLOR);  // highlight
   else display.setTextColor(TXTCOLOR, BGCOLOR);           // normal
-  display.setCursor(DISPTXT, 8 * line); // locate curser for printing text
+  display.setCursor(DISPTXT, 10 * line + 1); // locate curser for printing text
 }
 
 void DrawGrid(int x) {
   if ((x % DOTS_DIV) == 0) {
-    for (int y=0; y<=LCD_YMAX; y += 2)
+    for (int y=LCD_YMAX; y>=0; y -= 2)
       display.drawPixel(x, y, GRIDCOLOR);
   } else if ((x % 2) == 0)
-    for (int y=0; y<=LCD_YMAX; y += DOTS_DIV)
+    for (int y=LCD_YMAX; y>=0; y -= DOTS_DIV)
       display.drawPixel(x, y, GRIDCOLOR);
 }
 
@@ -499,7 +493,7 @@ void loop() {
           break;
       }
       if (rate<RATE_ROLL) { // sampling rate has been changed
-        display.clearDisplay();
+        display.fillSprite(BGCOLOR);
         break;
       }
       st += r;
@@ -521,7 +515,7 @@ void loop() {
       rp2040.fifo.push_nb(1);   // notify Websocket server core
 #endif
       ClearAndDrawDot(i);
-      display.display();  // 42ms
+      display.pushSprite(0, 0);
     }
     // Serial.println(millis()-st0);
     led_off();
@@ -547,7 +541,7 @@ void loop() {
 }
 
 void draw_screen() {
-  display.clearDisplay();
+  display.fillSprite(BGCOLOR);
   if (wfft != fft_mode) {
     fft_mode = wfft;
   }
@@ -563,7 +557,7 @@ void draw_screen() {
     if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
 #endif
   }
-  display.display();
+  display.pushSprite(0, 0);
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
   rp2040.fifo.push_nb(1);   // notify Websocket server core
   delay(10);    // wait Web task to send it (adhoc fix)
@@ -574,7 +568,11 @@ void draw_screen() {
 void measure_frequency(int ch) {
   int x1, x2;
   freqDuty(ch);
-  display.setTextColor(TXTCOLOR, BGCOLOR);
+  if (ch == 0) {
+    display.setTextColor(CH1COLOR, BGCOLOR);
+  } else {
+    display.setTextColor(CH2COLOR, BGCOLOR);
+  }
   display.setCursor(textINFO, txtLINE0);
   float freq = waveFreq[ch];
   if (freq < 999.5)
@@ -599,6 +597,11 @@ void measure_voltage(int ch) {
   float vavr = VRF * dataAve[ch] / 40950.0;
   float vmax = VRF * dataMax[ch] / 4095.0;
   float vmin = VRF * dataMin[ch] / 4095.0;
+  if (ch == 0) {
+    display.setTextColor(CH1COLOR, BGCOLOR);
+  } else {
+    display.setTextColor(CH2COLOR, BGCOLOR);
+  }
   display.setCursor(textINFO, txtLINE2);
   display.print("max");  display.print(vmax); if (vmax >= 0.0) display.print('V');
   display.setCursor(textINFO, txtLINE3);

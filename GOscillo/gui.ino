@@ -124,7 +124,12 @@ void DrawText() {
 }
 
 void draw_trig_level(int color) { // draw trig_lv mark
-  display.drawFastHLine(DISPLNG, LCD_YMAX - trig_lv, 3, color); // draw trig_lv tic
+  int x, y;
+
+  x = DISPLNG; y = LCD_YMAX - trig_lv;
+  display.drawLine(x, y, x+4, y+4, color);
+  display.drawLine(x+4, y+4, x+4, y-4, color);
+  display.drawLine(x+4, y-4, x, y, color);
 }
 
 #define BTN_UP    0
@@ -212,7 +217,7 @@ void CheckSW() {
       break;
     }
     DrawText();
-    display.display();
+    display.pushSprite(0, 0);
   }
   lastsw = sw;
 }
@@ -334,7 +339,7 @@ void menu1_sw(byte sw) {
     break;
   case 3: // CH0 offset
     if (sw == BTN_RIGHT) {        // offset +
-      if (ch0_off < 4095)
+      if (ch0_off < 8191)
         ch0_off += 4096/VREF[range0];
     } else if (sw == BTN_LEFT) {  // offset -
       if (ch0_off > -4095)
@@ -373,7 +378,7 @@ void menu1_sw(byte sw) {
     break;
   case 7: // CH1 offset
     if (sw == BTN_RIGHT) {        // offset +
-      if (ch1_off < 4095)
+      if (ch1_off < 8191)
         ch1_off += 4096/VREF[range1];
     } else if (sw == BTN_LEFT) {  // offset -
       if (ch1_off > -4095)
