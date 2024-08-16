@@ -354,7 +354,7 @@ ws.onmessage = function(evt) {
   var cnstH= groundH/4096;
   var pichH = groundH/8;
   const fftsamples = 64;
-  const displng = 128;
+  const displng = 160;
   const dotpich = (groundW - 1) / displng;
   const fftpich = 512 / fftsamples;
   ctx.beginPath();
@@ -375,8 +375,8 @@ ws.onmessage = function(evt) {
     ctx.moveTo(groundX0, groundY0-i*pichH);
     ctx.lineTo(groundW, groundY0-i*pichH);
     for (var j=10; j<50; j=j+10){
-      ctx.moveTo(6*pichX-5, groundY0-i*pichH-j);
-      ctx.lineTo(6*pichX+5, groundY0-i*pichH-j);
+      ctx.moveTo(8*pichX-5, groundY0-i*pichH-j);
+      ctx.lineTo(8*pichX+5, groundY0-i*pichH-j);
     }
   }
   ctx.moveTo(groundX0, groundY0-i*pichH);
@@ -644,7 +644,7 @@ async function post_duty() {
 <body>
 <h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.33</h3>
 <div style='float: left; margin-right: 10px'>
-<canvas id='cvs1' width='641' height='401' class='float'></canvas></div>
+<canvas id='cvs1' width='801' height='401' class='float'></canvas></div>
 <form id='rate0'>Rate: <label id="rate_area">%RATE% %REALDMA%</label>
   <button type="button" name='rate' value='1' onclick='postrate(this.value)'>FAST</button>
   <button type="button" name='rate' value='0' onclick='postrate(this.value)'>SLOW</button></form>
