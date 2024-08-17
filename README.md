@@ -1,6 +1,8 @@
 # RaspberryPiPicoWOLEDOscilloscope
 Raspberry Pi Pico W dual channel Oscilloscope for OLED and wireless WEB display
 
+The 80x160 IPS TFT version is available at IPS80x160 branch.
+
 <img src="DSC00020.jpg">
 <img src="RPPicoWEBOLED.png">
 
