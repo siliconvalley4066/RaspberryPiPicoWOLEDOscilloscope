@@ -2,7 +2,7 @@
 Raspberry Pi Pico W dual channel Oscilloscope for 80x160 IPS TFT and wireless WEB display
 
 <img src="DSC00020.jpg">
-<img src="RPPicoWEBOLED.png">
+<img src="RPPicoWEBIPS.png">
 
 This displays an oscilloscope screen on a 80x160 IPS TFT and also on the WEB page simultaneusly.
 The settings are controled by the 5 direction switch and also on the WEB page.
