@@ -24,6 +24,8 @@ Specifications:
 The source codes can be compiled for Raspberry Pi Pico (not W) without WEB functions.<br>
 Also it can be compiled for RP2040-Zero without WEB functions.
 
+<img src="DSC03508.jpg">
+
 For WEB operations, edit the source code WebTask.ino and replace your Access Point and the password.
 <pre>
 Edit:
@@ -60,4 +62,4 @@ Select the board "Waveshare RP2040 Zero" in the Arduino IDE<br>
 There is no software support for input attenuation yet.
 
 Description is here, although it is written in Japanese language:
-http://harahore.g2.xrea.com/RaspberryPiPico/RPPicoGOscillo.html
+http://harahore.g2.xrea.com/RaspberryPiPico/RPPicoIPSOscillo.html
