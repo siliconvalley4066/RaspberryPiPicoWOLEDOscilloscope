@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.00
+ * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.01
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -76,7 +76,7 @@ const int DISPLNG = 130;
 const int DOTS_DIV = 10;
 const byte ad_ch0 = 26;                 // Analog pin for channel 0
 const byte ad_ch1 = 27;                 // Analog pin for channel 1
-const long VREF[] = {33, 66, 165, 330, 660}; // reference voltage 3.3V ->  33 :   1V/div range (100mV/dot)
+const long VREF[] = {37, 73, 183, 367, 733}; // reference voltage 3.3V ->  33 :   1V/div range (100mV/dot)
                                         //                        ->  66 : 0.5V/div
                                         //                        -> 165 : 0.2V/div
                                         //                        -> 330 : 100mV/div
@@ -112,7 +112,7 @@ const char Rates[RATE_NUM][5] PROGMEM = {" 2us", " 4us", "20us", "40us", "100u",
 const unsigned long HREF[] PROGMEM = {20, 20, 20, 40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
 #define RANGE_MIN 0
 #define RANGE_MAX 4
-#define VRF 3.3
+#define VRF 3.67  // = 3.3/0.9
 const char Ranges[5][5] PROGMEM = {" 1V ", "0.5V", "0.2V", "0.1V", "50mV"};
 byte range0 = RANGE_MIN;
 byte range1 = RANGE_MIN;
@@ -137,10 +137,10 @@ float sys_clk;      // System clock is typically 125MHz, eventually 133MHz
 volatile bool wfft, wdds;
 
 #if defined(ARDUINO_WAVESHARE_RP2040_ZERO)
-#define LEFTPIN   14  // LEFT
-#define RIGHTPIN   7  // RIGHT
+#define LEFTPIN   15  // LEFT
+#define RIGHTPIN  14  // RIGHT
 #define UPPIN      6  // UP
-#define DOWNPIN    3  // DOWN
+#define DOWNPIN    5  // DOWN
 #define CH0DCSW   29  // DC/AC switch ch0
 #define CH1DCSW   28  // DC/AC switch ch1
 #else
@@ -174,11 +174,13 @@ void setup(){
 #else
   pinMode(LED_BUILTIN, OUTPUT);     // sets the digital pin as output
 #endif
+#ifndef NOLCD
   tft.init();   // initialize a ST7735S chip
   tft.setRotation(3);
 // Optionally set colour depth to 8 or 16 bits, default is 16 if not spedified
   display.setColorDepth(8);
   display.createSprite(LCD_WIDTH, LCD_HEIGHT);
+#endif
 
 //  Serial.begin(115200);
 #ifdef EEPROM_START
@@ -202,6 +204,7 @@ void setup(){
   clock_configure_gpin(clk_gpout0, GPIN1, 1000, 1000);  // frequency count on GPIO22
 }
 
+#ifndef NOLCD
 void DrawGrid() {
   int disp_leng;
   if (full_screen) disp_leng = SAMPLES;
@@ -315,6 +318,7 @@ void ClearAndDrawDot(int i) {
   }
 #endif
 }
+#endif
 
 void scaleDataArray(byte ad_ch, int trig_point)
 {
@@ -493,7 +497,9 @@ void loop() {
           break;
       }
       if (rate<RATE_ROLL) { // sampling rate has been changed
+#ifndef NOLCD
         display.fillSprite(BGCOLOR);
+#endif
         break;
       }
       st += r;
@@ -514,15 +520,19 @@ void loop() {
       if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
       rp2040.fifo.push_nb(1);   // notify Websocket server core
 #endif
+#ifndef NOLCD
       ClearAndDrawDot(i);
       display.pushSprite(0, 0);
+#endif
     }
     // Serial.println(millis()-st0);
     led_off();
+#ifndef NOLCD
     DrawGrid();
     if (!full_screen) DrawText();
   } else {
     DrawText();
+#endif
   }
   if (trig_mode == TRIG_ONE)
     Start = false;
@@ -541,23 +551,31 @@ void loop() {
 }
 
 void draw_screen() {
+#ifndef NOLCD
   display.fillSprite(BGCOLOR);
+#endif
   if (wfft != fft_mode) {
     fft_mode = wfft;
   }
   if (fft_mode) {
+#ifndef NOLCD
     DrawText();
+#endif
     plotFFT();
   } else {
+#ifndef NOLCD
     DrawGrid();
     ClearAndDrawGraph();
     if (!full_screen) DrawText();
+#endif
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
     if (ch0_mode == MODE_OFF) payload[0] = -1;
     if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
 #endif
   }
+#ifndef NOLCD
   display.pushSprite(0, 0);
+#endif
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
   rp2040.fifo.push_nb(1);   // notify Websocket server core
   delay(10);    // wait Web task to send it (adhoc fix)
@@ -565,6 +583,7 @@ void draw_screen() {
 }
 
 #define textINFO (DISPLNG-48)
+#ifndef NOLCD
 void measure_frequency(int ch) {
   int x1, x2;
   freqDuty(ch);
@@ -609,6 +628,7 @@ void measure_voltage(int ch) {
   display.setCursor(textINFO, txtLINE4);
   display.print("min");  display.print(vmin); if (vmin >= 0.0) display.print('V');
 }
+#endif
 
 void sample_dual_us(unsigned int r) { // dual channel. r > 67
   if (ch0_mode != MODE_OFF && ch1_mode == MODE_OFF) {
@@ -684,8 +704,10 @@ void plotFFT() {
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
     payload[i] = constrain((int)(1024.0 * (db - 1.6)), 0, 4095);
 #endif
+#ifndef NOLCD
     int dat = constrain((int)(15.0 * db - 20), 0, ylim);
     display.drawFastVLine(i * 2, ylim - dat, dat, CH1COLOR);
+#endif
   }
   draw_scale();
 }
@@ -693,8 +715,10 @@ void plotFFT() {
 void draw_scale() {
   int ylim = LCD_HEIGHT - 8;
   float fhref, nyquist;
+#ifndef NOLCD
   display.setTextColor(TXTCOLOR);
   display.setCursor(0, ylim); display.print("0Hz"); 
+#endif
   fhref = freqhref();
   nyquist = 5.0e6 / fhref; // Nyquist frequency
 #ifdef ARDUINO_RASPBERRY_PI_PICO_W
@@ -702,6 +726,7 @@ void draw_scale() {
   payload[FFT_N/2] = (short) (inyquist / 1000);
   payload[FFT_N/2+1] = (short) (inyquist % 1000);
 #endif
+#ifndef NOLCD
   if (nyquist > 999.0) {
     nyquist = nyquist / 1000.0;
     if (nyquist > 99.5) {
@@ -719,6 +744,7 @@ void draw_scale() {
     display.setCursor(58, ylim); display.print(nyquist/2,0);
     display.setCursor(110, ylim); display.print(nyquist,0);
   }
+#endif
 }
 
 float freqhref() {
@@ -818,7 +844,7 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   if (ch0_mode > 2) ++error;
   *((byte *)&ch0_off) = EEPROM.read(p++);     // ch0_off low
   *((byte *)&ch0_off + 1) = EEPROM.read(p++); // ch0_off high
-  if ((ch0_off < -4096) || (ch0_off > 4095)) ++error;
+  if ((ch0_off < -4096) || (ch0_off > 8191)) ++error;
 
   range1 = EEPROM.read(p++);                // range1
   if ((range1 < RANGE_MIN) || (range1 > RANGE_MAX)) ++error;
@@ -826,7 +852,7 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   if (ch1_mode > 2) ++error;
   *((byte *)&ch1_off) = EEPROM.read(p++);     // ch1_off low
   *((byte *)&ch1_off + 1) = EEPROM.read(p++); // ch1_off high
-  if ((ch1_off < -4096) || (ch1_off > 4095)) ++error;
+  if ((ch1_off < -4096) || (ch1_off > 8191)) ++error;
 
   rate = EEPROM.read(p++);                  // rate
   if ((rate < RATE_MIN) || (rate > RATE_MAX)) ++error;

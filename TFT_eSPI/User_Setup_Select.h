@@ -96,7 +96,11 @@
 //#include <User_Setups/Setup60_RP2040_ILI9341.h>              // Setup file for RP2040 with SPI ILI9341
 
 #if defined(ARDUINO_ARCH_RP2040)
-#include <User_Setups/Setup108_RP2040_ST7735.h> // Setup file for Waveshare RP2040 board with onboard ST7735 0.96" 160x80 display
+#if defined(ARDUINO_WAVESHARE_RP2040_ZERO)
+#include <User_Setups/Setup108b_RP2040_ST7735.h> // Setup file for RP2040-Zero board with ST7735 0.96" 160x80 display SPI0
+#else
+#include <User_Setups/Setup108a_RP2040_ST7735.h> // Setup file for Waveshare RP2040 board with onboard ST7735 0.96" 160x80 display SPI1
+#endif
 //#include <User_Setups/Setup60a_RP2040_ILI9341.h>              // Setup file for RP2040 with SPI ILI9341
 #endif
 

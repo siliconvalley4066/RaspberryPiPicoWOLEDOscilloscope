@@ -24,8 +24,12 @@ const char Wavename[][5] PROGMEM = {"Sine", "Saw", "RSaw", "Tri", "Rect",
 const byte wave_num = (sizeof(wavetable) / sizeof(&sine256));
 long ifreq = 23841; // frequency * 100 for 0.01Hz resolution
 byte wave_id = 0;
-static word slice_num2; // GP2 PWM slice number
+static word slice_num2; // GPIO PWM slice number
+#if defined(ARDUINO_WAVESHARE_RP2040_ZERO) && defined(ST7735_DRIVER)
+#define DDSPin 4
+#else
 #define DDSPin 2
+#endif
 
 // const double refclk=61035.15625; // 61.03515625kHz at 125MHz
 double refclk=61035.15625;          // System clock is typically 125MHz, eventually 133MHz
@@ -73,8 +77,8 @@ void set_wave(int id) {
 // timer2 setup
 // set prscaler to 8, PWM mode, 125000000/8/256 = 61035.15625 Hz clock
 void Setup_timer2() {
-    gpio_set_function(2, GPIO_FUNC_PWM);    // GPIO2 PWM
-    slice_num2  = pwm_gpio_to_slice_num(2); // PWM slice number
+    gpio_set_function(DDSPin, GPIO_FUNC_PWM);     // GPIO PWM
+    slice_num2  = pwm_gpio_to_slice_num(DDSPin);  // PWM slice number
     pwm_clear_irq(slice_num2);
     pwm_set_irq_enabled(slice_num2, true);
     irq_set_exclusive_handler(PWM_IRQ_WRAP, pwmISR);

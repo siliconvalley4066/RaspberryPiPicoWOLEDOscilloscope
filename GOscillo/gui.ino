@@ -1,3 +1,4 @@
+#ifndef NOLCD
 void DrawText() {
   display.fillRect(DISPLNG+1,0,LCD_WIDTH-DISPLNG-1,LCD_HEIGHT, BGCOLOR); // clear text area that will be drawn below 
 
@@ -25,7 +26,11 @@ void DrawText() {
     display_trig_mode();
     set_line_color(5);
     display.print(trig_ch == ad_ch0 ? "TG1" : "TG2"); 
+#ifdef _ADAFRUIT_GFX_H
     display.print(trig_edge == TRIG_E_UP ? char(0x18) : char(0x19)); 
+#else
+    display.print(trig_edge == TRIG_E_UP ? '/' : '\\'); 
+#endif
     set_line_color(6);
     display.print("Tlev"); 
     set_line_color(7);
@@ -131,6 +136,7 @@ void draw_trig_level(int color) { // draw trig_lv mark
   display.drawLine(x+4, y+4, x+4, y-4, color);
   display.drawLine(x+4, y-4, x, y, color);
 }
+#endif
 
 #define BTN_UP    0
 #define BTN_DOWN  10
@@ -198,7 +204,9 @@ void CheckSW() {
   saveTimer = 5000;     // set EEPROM save timer to 5 second
   if (sw == BTN_FULL) {
     full_screen = !full_screen;
+#ifndef NOLCD
     display.fillRect(DISPLNG+1,0,LCD_WIDTH-DISPLNG-1,LCD_HEIGHT, BGCOLOR); // clear text area that will be drawn below 
+#endif
   } else {
     switch (menu) {
     case 0:
@@ -216,8 +224,10 @@ void CheckSW() {
     default:
       break;
     }
+#ifndef NOLCD
     DrawText();
     display.pushSprite(0, 0);
+#endif
   }
   lastsw = sw;
 }

@@ -47,7 +47,6 @@ void pulse_init() {
   int divide;
   p_range = constrain(p_range, 0, 8);
   divide = range_div[p_range];
-//  count = (unsigned int)(125e6 / 1000.0 / divide - 1);
 
   // Tell GPIO 0 and 1 they are allocated to the PWM
   gpio_set_function(0, GPIO_FUNC_PWM);
@@ -98,6 +97,7 @@ void update_frq(int diff) {
   setduty();
 }
 
+#ifndef NOLCD
 void disp_pulse_frq(void) {
   float freq = pulse_frq();
   if (freq < 10.0) {
@@ -133,6 +133,7 @@ void disp_pulse_dty(void) {
     sp = true;
   }
 }
+#endif
 
 void setCounter(int divide) {
   if (divide == 1) {
