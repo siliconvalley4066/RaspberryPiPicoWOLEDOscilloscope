@@ -59,4 +59,4 @@ Select the board "Waveshare RP2040 Zero" in the Arduino IDE<br>
 There is no software support for input attenuation yet.
 
 Description is here, although it is written in Japanese language:
-[http://](https://ss1.xrea.com/)harahore.g2.xrea.com/RaspberryPiPico/RPPicoGOscillo.html
+https://ss1.xrea.com/harahore.g2.xrea.com/RaspberryPiPico/RPPicoGOscillo.html
