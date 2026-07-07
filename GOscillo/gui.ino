@@ -25,7 +25,11 @@ void DrawText() {
     display_trig_mode();
     set_line_color(5);
     display.print(trig_ch == ad_ch0 ? "TG1" : "TG2"); 
+#ifdef _ADAFRUIT_GFX_H
     display.print(trig_edge == TRIG_E_UP ? char(0x18) : char(0x19)); 
+#else
+    display.print(trig_edge == TRIG_E_UP ? '/' : '\\'); 
+#endif
     set_line_color(6);
     display.print("Tlev"); 
     set_line_color(7);

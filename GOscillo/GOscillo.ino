@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.31
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.32
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -213,13 +213,13 @@ void DrawGrid() {
   if (full_screen) disp_leng = SAMPLES;
   else disp_leng = DISPLNG;
   for (int x=0; x<=disp_leng; x += 2) { // Horizontal Line
-    for (int y=0; y<=LCD_YMAX; y += DOTS_DIV) {
+    for (int y=LCD_YMAX; y>=0; y -= DOTS_DIV) {
       display.drawPixel(x, y, GRIDCOLOR);
 //      CheckSW();
     }
   }
   for (int x=0; x<=disp_leng; x += DOTS_DIV ) { // Vertical Line
-    for (int y=0; y<=LCD_YMAX; y += 2) {
+    for (int y=LCD_YMAX; y>=0; y -= 2) {
       display.drawPixel(x, y, GRIDCOLOR);
 //      CheckSW();
     }
@@ -268,10 +268,10 @@ void set_line_color(byte line) {
 
 void DrawGrid(int x) {
   if ((x % DOTS_DIV) == 0) {
-    for (int y=0; y<=LCD_YMAX; y += 2)
+    for (int y=LCD_YMAX; y>=0; y -= 2)
       display.drawPixel(x, y, GRIDCOLOR);
   } else if ((x % 2) == 0)
-    for (int y=0; y<=LCD_YMAX; y += DOTS_DIV)
+    for (int y=LCD_YMAX; y>=0; y -= DOTS_DIV)
       display.drawPixel(x, y, GRIDCOLOR);
 }
 
