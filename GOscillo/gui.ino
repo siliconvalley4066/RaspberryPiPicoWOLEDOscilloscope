@@ -19,9 +19,16 @@ void DrawText() {
     set_line_color(2);
     display_rate();
     set_line_color(3);
-    if (rate > RATE_DMA) display.print("real");
+    if (time_mag == 2) display.print(" x2 ");
+    else if (time_mag == 5) display.print(" x5 ");
+    else if (time_mag == 10) display.print("x10 ");
+    else if (rate > RATE_DMA) display.print("real");
+#ifdef RATE_MAG
     else if (rate > RATE_MAG) display.print("DMA ");
     else display.print("MAG ");
+#else
+    else display.print("DMA ");
+#endif
     set_line_color(4);
     display_trig_mode();
     set_line_color(5);
@@ -118,6 +125,11 @@ void DrawText() {
   }
   if (info_mode & 3) {
     int ch = (info_mode & 4) ? 1 : 0;
+    if (ch == 0) {
+      display.setTextColor(CH1COLOR, BGCOLOR);
+    } else {
+      display.setTextColor(CH2COLOR, BGCOLOR);
+    }
     dataAnalize(ch);
     if (info_mode & 1)
       measure_frequency(ch);
@@ -205,7 +217,7 @@ void CheckSW() {
   if (sw == BTN_FULL) {
     full_screen = !full_screen;
 #ifndef NOLCD
-    display.fillRect(DISPLNG+1,0,LCD_WIDTH-DISPLNG-1,LCD_HEIGHT, BGCOLOR); // clear text area that will be drawn below 
+    display.fillRect(DISPLNG+1,0,LCD_WIDTH-DISPLNG-1,LCD_HEIGHT, BGCOLOR);  // clear text area that will be drawn below 
 #endif
   } else {
     switch (menu) {
@@ -225,7 +237,7 @@ void CheckSW() {
       break;
     }
 #ifndef NOLCD
-    DrawText();
+    if (!full_screen) DrawText();
     display.pushSprite(0, 0);
 #endif
   }
@@ -255,12 +267,21 @@ void updown_ch1range(byte sw) {
 void updown_rate(byte sw) {
   if (sw == BTN_RIGHT) {        // RATE FAST
     orate = rate;
-    if (rate > 0) rate --;
+    if (rate > 0) {
+      rate --;
+    }
   } else if (sw == BTN_LEFT) {  // RATE SLOW
     orate = rate;
-    if (rate < RATE_MAX) rate ++;
-    else rate = RATE_MAX;
+    if (rate < RATE_MAX) {
+      rate ++;
+    } else {
+      rate = RATE_MAX;
+    }
   }
+  if (rate >= RATE_ROLL) time_mag = 1;
+#ifdef RATE_MAG
+  if (rate <= RATE_MAG) time_mag = 1;
+#endif
 }
 
 void menu0_sw(byte sw) {  
@@ -274,7 +295,36 @@ void menu0_sw(byte sw) {
   case 2: // rate
     updown_rate(sw);
     break;
-  case 3: // sampling mode
+  case 3: // magnify timebase
+    if (sw == BTN_RIGHT) {        // MAG MODE +
+#ifdef RATE_MAG
+      if (rate <= RATE_MAG)
+        time_mag = 1;
+      else if (time_mag == 1)
+        time_mag = 2;
+#else
+      if (time_mag == 1)
+        time_mag = 2;
+#endif
+      else if (time_mag == 2)
+        time_mag = 5;
+      else
+        time_mag = 10;
+    } else if (sw == BTN_LEFT) {  // MAG MODE -
+#ifdef RATE_MAG
+      if (rate <= RATE_MAG)
+        time_mag = 1;
+      else if (time_mag == 5)
+        time_mag = 2;
+#else
+      if (time_mag == 5)
+        time_mag = 2;
+#endif
+      else if (time_mag == 10)
+        time_mag = 5;
+      else
+        time_mag = 1;
+    }
     break;
   case 4: // trigger mode
     if (sw == BTN_RIGHT) {        // TRIG MODE +
@@ -328,7 +378,21 @@ void menu0_sw(byte sw) {
 }
 
 void menu1_sw(byte sw) {  
+  int diff;
   switch (item - 8) {
+  case 0: // CH0 mode
+    diff = 1;
+    if (sw == lastsw) {
+      if (millis() - vtime > 3000) diff = 8;
+    }
+    if (sw == BTN_RIGHT) {        // MAG pos +
+      if (mag_pos < (SAMPLES - SAMPLES/time_mag - diff))
+        mag_pos += diff;
+    } else if (sw == BTN_LEFT) {  // MAG pos -
+      if (mag_pos > (diff - 1))
+        mag_pos -= diff;
+    }
+    break;
   case 1: // CH0 mode
     if (sw == BTN_RIGHT) {        // CH0 + ON/INV
       if (ch0_mode == MODE_ON)
@@ -532,7 +596,7 @@ void menu3_sw(byte sw) {
     }
     break;
   case 6: // Frequency Counter
-    if (sw == 3 && rate <= RATE_MAX) {  // on
+    if (sw == BTN_RIGHT && rate <= RATE_MAX) {  // on
       fcount_mode = true;
     } else if (sw == BTN_LEFT) {        // off
       fcount_mode = false;
@@ -553,7 +617,7 @@ void menu_updown(byte sw) {
 void increment_item() {
   ++item;
   if (item > ITEM_MAX) item = 0;
-  if (item == 3) item = 4;      // skip real/DMA
+  // if (item == 3) item = 4;      // skip real/DMA
   if (item < 16 || item > 18) wfft = false; // exit FFT mode
   menu = item >> 3;
 }
@@ -561,7 +625,7 @@ void increment_item() {
 void decrement_item() {
   if (item > 0) --item;
   else item = ITEM_MAX;
-  if (item == 3) item = 2;      // skip real/DMA
+  // if (item == 3) item = 2;      // skip real/DMA
   if (item < 16 || item > 18) wfft = false; // exit FFT mode
   menu = item >> 3;
 }
@@ -575,4 +639,15 @@ byte sw_accel(byte sw) {
     else if (curtime - vtime > 2000) diff = 2;
   }
   return (diff);
+}
+
+void mag_bar(void) {
+  if (time_mag > 1) {
+    int bar = SAMPLES / time_mag;
+    // display.drawFastHLine(0, LCD_HEIGHT - 1, mag_pos, BGCOLOR);
+    display.drawFastHLine(mag_pos, LCD_HEIGHT - 1, bar, HIGHCOLOR);
+    // display.drawFastHLine(mag_pos + bar, LCD_HEIGHT - 1, SAMPLES - mag_pos - bar, BGCOLOR);
+  } else {
+    // display.drawFastHLine(0, LCD_HEIGHT - 1, SAMPLES, BGCOLOR);
+  }
 }

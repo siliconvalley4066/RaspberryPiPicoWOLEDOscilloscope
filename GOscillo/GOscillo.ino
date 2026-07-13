@@ -1,10 +1,10 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.01
+ * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.02
  * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
  * + Frequency Counter (kHz)
- * Copyright (c) 2023, Siliconvalley4066
+ * Copyright (c) 2023,2026, Siliconvalley4066
  */
 /*
  * Arduino Oscilloscope using a graphic LCD
@@ -25,6 +25,9 @@ TFT_eSprite display = TFT_eSprite(&tft);  // Declare Sprite object "display" wit
 #include "hardware/adc.h"
 #define GPIN1 (22)
 
+#if !defined(ARDUINO_RASPBERRY_PI_PICO_W)
+#define NOWEB
+#endif
 #define BUTTON5DIR
 #ifndef ARDUINO_ARCH_MBED_RP2040
 #define EEPROM_START 0
@@ -67,8 +70,8 @@ extern unsigned short count;
 extern long ifreq;
 extern byte wave_id;
 
-const int LCD_WIDTH = 160;
-const int LCD_HEIGHT = 80;
+#define LCD_WIDTH 160
+#define LCD_HEIGHT 80
 const int LCD_YMAX = 79;
 const int SAMPLES = 160;
 const int NSAMP = 640;
@@ -124,7 +127,7 @@ byte menu = 0;      // Default menu
 short ch0_off = 0, ch1_off = 400;
 byte data[2][SAMPLES];                  // keep the number of channels buffer
 uint16_t cap_buf[NSAMP], cap_buf1[NSAMP];
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
 uint16_t payload[SAMPLES*2+2];
 #endif
 byte odat00, odat01, odat10, odat11;    // old data buffer for erase
@@ -135,6 +138,9 @@ byte info_mode = 3; // Text information display mode
 int trigger_ad;
 float sys_clk;      // System clock is typically 125MHz, eventually 133MHz
 volatile bool wfft, wdds;
+byte time_mag = 1;  // magnify timebase: 1, 2, 5 or 10
+int trigger_pos;
+int mag_pos = 0;
 
 #if defined(ARDUINO_WAVESHARE_RP2040_ZERO)
 #define LEFTPIN   15  // LEFT
@@ -159,6 +165,7 @@ volatile bool wfft, wdds;
 #define CH2COLOR  TFT_YELLOW
 #define TXTCOLOR  TFT_WHITE
 #define TRGCOLOR  TFT_SKYBLUE
+#define HIGHCOLOR TFT_CYAN
 #define LED_ON    HIGH
 #define LED_OFF   LOW
 
@@ -212,15 +219,15 @@ void DrawGrid() {
   for (int x=0; x<=disp_leng; x += 2) { // Horizontal Line
     for (int y=LCD_YMAX; y>=0; y -= DOTS_DIV) {
       display.drawPixel(x, y, GRIDCOLOR);
-//      CheckSW();
     }
   }
+  CheckSW();
   for (int x=0; x<=disp_leng; x += DOTS_DIV ) { // Vertical Line
     for (int y=LCD_YMAX; y>=0; y -= 2) {
       display.drawPixel(x, y, GRIDCOLOR);
-//      CheckSW();
     }
   }
+  CheckSW();
 }
 
 unsigned long fcount = 0;
@@ -260,7 +267,11 @@ void display_ac(byte pin) {
 void set_line_color(byte line) {
   if ((item & 0x7) == line) display.setTextColor(BGCOLOR, TXTCOLOR);  // highlight
   else display.setTextColor(TXTCOLOR, BGCOLOR);           // normal
+#if LCD_HEIGHT == 64
+  display.setCursor(DISPTXT, 8 * line); // locate curser for printing text
+#elif LCD_HEIGHT == 80
   display.setCursor(DISPTXT, 10 * line + 1); // locate curser for printing text
+#endif
 }
 
 void DrawGrid(int x) {
@@ -290,7 +301,6 @@ void ClearAndDrawGraph() {
     if (ch1_active) {
       display.drawLine(x, LCD_YMAX-data[sample+1][x], x+1, LCD_YMAX-data[sample+1][x+1], CH2COLOR);
     }
-    CheckSW();
   }
 #endif
 }
@@ -327,13 +337,13 @@ void scaleDataArray(byte ad_ch, int trig_point)
   uint16_t *idata, *qdata, *rdata;
   long a, b;
 
+  trigger_pos = trig_point;
   if (ad_ch == ad_ch1) {
     ch_off = ch1_off;
     ch_mode = ch1_mode;
     range = range1;
-    pdata = data[1];
     idata = &cap_buf1[trig_point];
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     qdata = rdata = payload+SAMPLES;
 #endif
     ch = 1;
@@ -341,13 +351,13 @@ void scaleDataArray(byte ad_ch, int trig_point)
     ch_off = ch0_off;
     ch_mode = ch0_mode;
     range = range0;
-    pdata = data[0];
     idata = &cap_buf[trig_point];
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     qdata = rdata = payload;
 #endif
     ch = 0;
   }
+  pdata = data[ch];
   for (int i = 0; i < SAMPLES; i++) {
     a = ((*idata + ch_off) * VREF[range] + 2048) >> 12;
     if (a > LCD_YMAX) a = LCD_YMAX;
@@ -355,7 +365,7 @@ void scaleDataArray(byte ad_ch, int trig_point)
     if (ch_mode == MODE_INV)
       a = LCD_YMAX - a;
     *pdata++ = (byte) a;
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     b = ((*idata++ + ch_off) * VREF[range] + 40) / 80;
     if (b > 4095) b = 4095;
     else if (b < 0) b = 0;
@@ -367,17 +377,34 @@ void scaleDataArray(byte ad_ch, int trig_point)
 #endif
   }
   if (rate == 0) {
-    mag(data[sample+ch], 10); // x10 magnification for display
+    mag(data[sample+ch], 10, 0);  // x10 magnification for display
   } else if (rate == 1) {
-    mag(data[sample+ch], 5);  // x5 magnification for display
+    mag(data[sample+ch], 5, 0);   // x5 magnification for display
   }
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
   if (rate == 0) {
-    mag(rdata, 10);           // x10 magnification for WEB
+    mag(rdata, 10, 0);            // x10 magnification for WEB
   } else if (rate == 1) {
-    mag(rdata, 5);            // x5 magnification for WEB
+    mag(rdata, 5, 0);             // x5 magnification for WEB
   }
 #endif
+  if (rate < RATE_ROLL && RATE_MAG < rate) {
+    switch (time_mag) {
+    case 2:
+    case 5:
+    case 10:
+      mag_pos = constrain(mag_pos, 0, SAMPLES - SAMPLES/time_mag - 5);
+      mag(data[sample+ch], time_mag, mag_pos);  // magnify timebase for display
+#ifndef NOWEB
+      mag(rdata, time_mag, mag_pos);            // magnify timebase for WEB
+#endif
+      break;
+    default:
+      time_mag = 1;   // fix odd value
+      mag_pos = 0;    // reset the position
+      break;
+    }
+  }
 }
 
 byte adRead(byte ch, byte mode, int off, int i)
@@ -393,7 +420,7 @@ byte adRead(byte ch, byte mode, int off, int i)
   else if (a < 0) a = 0;
   if (mode == MODE_INV)
     a = LCD_YMAX - a;
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
   long b = (((long)aa+off)*VREF[ch == ad_ch0 ? range0 : range1] + 40) / 80;
   if (b > 4095) b = 4095;
   else if (b < 0) b = 0;
@@ -402,12 +429,12 @@ byte adRead(byte ch, byte mode, int off, int i)
 #endif
   if (ch == ad_ch1) {
     cap_buf1[i] = aa;
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     payload[i+SAMPLES] = b;
 #endif
   } else {
     cap_buf[i] = aa;
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     payload[i] = b;
 #endif
   }
@@ -515,7 +542,7 @@ void loop() {
       odat11 = data[1][i];  // save previous data ch1
       if (ch0_mode != MODE_OFF) data[0][i] = adRead(ad_ch0, ch0_mode, ch0_off, i);
       if (ch1_mode != MODE_OFF) data[1][i] = adRead(ad_ch1, ch1_mode, ch1_off, i);
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
       if (ch0_mode == MODE_OFF) payload[0] = -1;
       if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
       rp2040.fifo.push_nb(1);   // notify Websocket server core
@@ -566,19 +593,21 @@ void draw_screen() {
 #ifndef NOLCD
     DrawGrid();
     ClearAndDrawGraph();
+    CheckSW();
     if (!full_screen) DrawText();
+    mag_bar();
 #endif
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     if (ch0_mode == MODE_OFF) payload[0] = -1;
     if (ch1_mode == MODE_OFF) payload[SAMPLES] = -1;
 #endif
   }
-#ifndef NOLCD
-  display.pushSprite(0, 0);
-#endif
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
   rp2040.fifo.push_nb(1);   // notify Websocket server core
   delay(10);    // wait Web task to send it (adhoc fix)
+#endif
+#ifndef NOLCD
+  display.pushSprite(0, 0);
 #endif
 }
 
@@ -587,11 +616,6 @@ void draw_screen() {
 void measure_frequency(int ch) {
   int x1, x2;
   freqDuty(ch);
-  if (ch == 0) {
-    display.setTextColor(CH1COLOR, BGCOLOR);
-  } else {
-    display.setTextColor(CH2COLOR, BGCOLOR);
-  }
   display.setCursor(textINFO, txtLINE0);
   float freq = waveFreq[ch];
   if (freq < 999.5)
@@ -616,11 +640,6 @@ void measure_voltage(int ch) {
   float vavr = VRF * dataAve[ch] / 40950.0;
   float vmax = VRF * dataMax[ch] / 4095.0;
   float vmin = VRF * dataMin[ch] / 4095.0;
-  if (ch == 0) {
-    display.setTextColor(CH1COLOR, BGCOLOR);
-  } else {
-    display.setTextColor(CH2COLOR, BGCOLOR);
-  }
   display.setCursor(textINFO, txtLINE2);
   display.print("max");  display.print(vmax); if (vmax >= 0.0) display.print('V');
   display.setCursor(textINFO, txtLINE3);
@@ -688,20 +707,24 @@ void sample_dual_ms(unsigned int r) { // dual channel. r > 500
 void plotFFT() {
   int ylim = LCD_HEIGHT - 8;
 
+  int j = 0;
+  if (rate <= RATE_DMA) {
+    j = trigger_pos;
+  }
   for (int i = 0; i < FFT_N; i++) {
-    vReal[i] = cap_buf[i];
+    vReal[i] = cap_buf[j++];
     vImag[i] = 0.0;
   }
   FFT.dcRemoval();
   FFT.windowing(FFTWindow::Hann, FFTDirection::Forward);  // Weigh data
   FFT.compute(FFTDirection::Forward);                     // Compute FFT
   FFT.complexToMagnitude();                               // Compute magnitudes
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
   payload[0] = 0;
 #endif
   for (int i = 1; i < FFT_N/2; i++) {
     float db = log10(vReal[i]);
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
     payload[i] = constrain((int)(1024.0 * (db - 1.6)), 0, 4095);
 #endif
 #ifndef NOLCD
@@ -721,7 +744,7 @@ void draw_scale() {
 #endif
   fhref = freqhref();
   nyquist = 5.0e6 / fhref; // Nyquist frequency
-#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#ifndef NOWEB
   long inyquist = nyquist;
   payload[FFT_N/2] = (short) (inyquist / 1000);
   payload[FFT_N/2+1] = (short) (inyquist % 1000);
@@ -771,7 +794,7 @@ void led_off(void) {
 
 #ifdef EEPROM_START
 void saveEEPROM() {                   // Save the setting value in EEPROM after waiting a while after the button operation.
-  int p = EEPROM_START;
+  uint16_t p = EEPROM_START;
   if (saveTimer > 0) {                // If the timer value is positive
     saveTimer = saveTimer - timeExec; // Timer subtraction
     if (saveTimer <= 0) {             // if time up
@@ -802,6 +825,7 @@ void saveEEPROM() {                   // Save the setting value in EEPROM after 
       EEPROM.write(p++, (ifreq >> 8) & 0xff);
       EEPROM.write(p++, (ifreq >> 16) & 0xff);
       EEPROM.write(p++, (ifreq >> 24) & 0xff);
+      EEPROM.write(p++, time_mag);
       EEPROM.commit();    // actually write EEPROM. Necessary for Raspberry Pi Pico
     }
   }
@@ -827,16 +851,17 @@ void set_default() {
   duty = 128;     // PWM 50%
   p_range = 0;    // PWM range
   count = 12499;  // PWM 10kHz
-  dds_mode = false;
+  dds_mode = true;
   wave_id = 0;    // sine wave
   ifreq = 23841;  // 238.41Hz
+  time_mag = 1;   // magnify timebase
 }
 
 extern const byte wave_num;
 
 #ifdef EEPROM_START
 void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be corrected to default)
-  int p = EEPROM_START, error = 0;
+  uint16_t p = EEPROM_START, error = 0;
 
   range0 = EEPROM.read(p++);                // range0
   if ((range0 < RANGE_MIN) || (range0 > RANGE_MAX)) ++error;
@@ -876,7 +901,7 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   if (p_range > 8) ++error;
   *((byte *)&count) = EEPROM.read(p++);     // count low
   *((byte *)&count + 1) = EEPROM.read(p++); // count high
-  dds_mode = EEPROM.read(p++);              // DDS wave id
+  dds_mode = EEPROM.read(p++);              // DDS mode
   wave_id = EEPROM.read(p++);               // DDS wave id
   if (wave_id >= wave_num) ++error;
   *((byte *)&ifreq) = EEPROM.read(p++);     // ifreq low
@@ -884,7 +909,9 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   *((byte *)&ifreq + 2) = EEPROM.read(p++); // ifreq
   *((byte *)&ifreq + 3) = EEPROM.read(p++); // ifreq high
   if (ifreq > 999999L) ++error;
-  if (error > 0)
+  time_mag = EEPROM.read(p++);              // magnify timebase
+  if (error > 0) {
     set_default();
+  }
 }
 #endif
