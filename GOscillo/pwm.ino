@@ -97,6 +97,7 @@ void update_frq(int diff) {
   setduty();
 }
 
+#ifndef NOLCD
 void disp_pulse_frq(void) {
   float freq = pulse_frq();
   if (freq < 10.0) {
@@ -132,6 +133,7 @@ void disp_pulse_dty(void) {
     sp = true;
   }
 }
+#endif
 
 void setCounter(int divide) {
   if (divide == 1) {
