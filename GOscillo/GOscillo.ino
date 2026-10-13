@@ -1,6 +1,6 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.02
- * The max realtime sampling rates are 250ksps with 2 channels and 500ksps with a channel.
+ * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.03
+ * The max realtime sampling rates are 250ksps with 2 channels and 2Msps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
  * + Frequency Counter (kHz)
@@ -109,10 +109,9 @@ const int TRIG_E_DN = 1;
 #define RATE_DUAL 3
 #define RATE_SLOW 9
 #define RATE_ROLL 15
-#define RATE_MAG 1
 #define ITEM_MAX 30
-const char Rates[RATE_NUM][5] PROGMEM = {" 2us", " 4us", "20us", "40us", "100u", "200u", "500u", " 1ms", " 2ms", " 5ms", "10ms", "20ms", "50ms", "0.1s", "0.2s", "0.5s", " 1s ", " 2s ", " 5s ", " 10s"};
-const unsigned long HREF[] PROGMEM = {20, 20, 20, 40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
+const char Rates[RATE_NUM][5] PROGMEM = {" 5us", "10us", "20us", "40us", "100u", "200u", "500u", " 1ms", " 2ms", " 5ms", "10ms", "20ms", "50ms", "0.1s", "0.2s", "0.5s", " 1s ", " 2s ", " 5s ", " 10s"};
+const unsigned long HREF[] PROGMEM = {5, 10, 20, 40, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
 #define RANGE_MIN 0
 #define RANGE_MAX 4
 #define VRF 3.67  // = 3.3/0.9
@@ -176,6 +175,7 @@ void setup(){
   pinMode(DOWNPIN, INPUT_PULLUP);   // down
   pinMode(RIGHTPIN, INPUT_PULLUP);  // right
   pinMode(LEFTPIN, INPUT_PULLUP);   // left
+  // setPERIClock48MHz();
 #if defined(ARDUINO_WAVESHARE_RP2040_ZERO)
   pixels.begin();                   // NeoPixel start
 #else
@@ -376,19 +376,7 @@ void scaleDataArray(byte ad_ch, int trig_point)
     ++idata;
 #endif
   }
-  if (rate == 0) {
-    mag(data[sample+ch], 10, 0);  // x10 magnification for display
-  } else if (rate == 1) {
-    mag(data[sample+ch], 5, 0);   // x5 magnification for display
-  }
-#ifndef NOWEB
-  if (rate == 0) {
-    mag(rdata, 10, 0);            // x10 magnification for WEB
-  } else if (rate == 1) {
-    mag(rdata, 5, 0);             // x5 magnification for WEB
-  }
-#endif
-  if (rate < RATE_ROLL && RATE_MAG < rate) {
+  if (rate < RATE_ROLL) {
     switch (time_mag) {
     case 2:
     case 5:

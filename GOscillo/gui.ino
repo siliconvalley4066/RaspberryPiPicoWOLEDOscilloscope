@@ -23,12 +23,7 @@ void DrawText() {
     else if (time_mag == 5) display.print(" x5 ");
     else if (time_mag == 10) display.print("x10 ");
     else if (rate > RATE_DMA) display.print("real");
-#ifdef RATE_MAG
-    else if (rate > RATE_MAG) display.print("DMA ");
-    else display.print("MAG ");
-#else
     else display.print("DMA ");
-#endif
     set_line_color(4);
     display_trig_mode();
     set_line_color(5);
@@ -279,9 +274,10 @@ void updown_rate(byte sw) {
     }
   }
   if (rate >= RATE_ROLL) time_mag = 1;
-#ifdef RATE_MAG
-  if (rate <= RATE_MAG) time_mag = 1;
-#endif
+
+  if (rate == 0) setADCClockMSPS(2);  // 2Msps
+  if (rate == 1) setADCClockMSPS(1);  // 1Msps
+  if (rate > 1 && rate <= RATE_DMA) setADCClock500KSPS();  // ADC default USB clock
 }
 
 void menu0_sw(byte sw) {  
@@ -297,29 +293,15 @@ void menu0_sw(byte sw) {
     break;
   case 3: // magnify timebase
     if (sw == BTN_RIGHT) {        // MAG MODE +
-#ifdef RATE_MAG
-      if (rate <= RATE_MAG)
-        time_mag = 1;
-      else if (time_mag == 1)
-        time_mag = 2;
-#else
       if (time_mag == 1)
         time_mag = 2;
-#endif
       else if (time_mag == 2)
         time_mag = 5;
       else
         time_mag = 10;
     } else if (sw == BTN_LEFT) {  // MAG MODE -
-#ifdef RATE_MAG
-      if (rate <= RATE_MAG)
-        time_mag = 1;
-      else if (time_mag == 5)
-        time_mag = 2;
-#else
       if (time_mag == 5)
         time_mag = 2;
-#endif
       else if (time_mag == 10)
         time_mag = 5;
       else

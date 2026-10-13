@@ -6,6 +6,7 @@
 
 #include "hardware/adc.h"
 #include "hardware/dma.h"
+#include "hardware/vreg.h"
 
 // set this to determine sample rate
 // 0     = 500,000 Hz
@@ -17,6 +18,7 @@
 // 9600  = 5,000 Hz
 #define CLOCK_DIV 0
 #define FSAMP 500000
+// #define RAISE_CORE_VOLTAGE
 
 // Channel 0 is GPIO26
 #define CAPTURE_CHANNEL0 0
@@ -153,4 +155,58 @@ int trigger_point() {
     }
   }
   return i;
+}
+
+void setADCClockMSPS(uint32_t mhz) {
+  if (mhz == 1) {
+    set_sys_clock_khz(96000, true);
+#ifdef RAISE_CORE_VOLTAGE
+    vreg_set_voltage(VREG_VOLTAGE_1_10);  // normal core voltage for overclock
+    delay(2);
+#endif
+  } else {
+#ifdef RAISE_CORE_VOLTAGE
+    vreg_set_voltage(VREG_VOLTAGE_1_20);  // raise core voltage for overclock
+    delay(2);
+#endif
+    set_sys_clock_khz(192000, true);
+  }
+  uint32_t sys_hz = clock_get_hz(clk_sys);
+  clock_configure(
+    clk_adc,
+    0,
+    CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+    sys_hz,
+    sys_hz);
+  adc_set_clkdiv(0);
+  // Serial.print("SYS="); Serial.println(clock_get_hz(clk_sys));
+  // Serial.print("ADC="); Serial.println(clock_get_hz(clk_adc));
+  if (dds_mode) dds_set_freq(); // adjust DDS frequency
+}
+
+void setADCClock500KSPS() {
+  set_sys_clock_khz((uint32_t)sys_clk / 1000, true);
+#ifdef RAISE_CORE_VOLTAGE
+  vreg_set_voltage(VREG_VOLTAGE_1_10);  // normal core voltage for overclock
+  delay(2);
+#endif
+  clock_configure(
+    clk_adc,
+    0,
+    CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+    48000000,
+    48000000);
+  adc_set_clkdiv(0);
+  // Serial.print("SYS="); Serial.println(clock_get_hz(clk_sys));
+  // Serial.print("ADC="); Serial.println(clock_get_hz(clk_adc));
+  if (dds_mode) dds_set_freq(); // adjust DDS frequency
+}
+
+void setPERIClock48MHz() {
+  clock_configure(
+    clk_peri,
+    0,
+    CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+    48000000,
+    48000000);
 }

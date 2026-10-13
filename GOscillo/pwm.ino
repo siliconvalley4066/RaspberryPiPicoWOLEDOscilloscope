@@ -30,15 +30,16 @@ void pulse_init() {
 #else
 double pulse_frq(void) {          // 7.48Hz <= freq <= 62.5MHz
   int divide = range_div[p_range];
-  return(sys_clk / ((double)((long)count + 1) * (double)divide));
+  return(clock_get_hz(clk_sys) / ((double)((long)count + 1) * (double)divide));
 }
 
 void set_pulse_frq(float freq) {  // 7.48Hz <= freq <= 62.5MHz
-  if (freq > (float)(sys_clk / 2)) freq = sys_clk / 2;
-  p_range = constrain(9 - int(10.0 - log(sys_clk / 32768.0 / freq)/log(2)), 0, 8);
+  uint32_t sys_hz = clock_get_hz(clk_sys);
+  if (freq > (float)(sys_hz / 2)) freq = sys_hz / 2;
+  p_range = constrain(9 - int(10.0 - log(sys_hz / 32768.0 / freq)/log(2)), 0, 8);
   int divide = range_div[p_range];
   setCounter(divide);
-  count = (float)sys_clk/freq/(float)divide - 1;
+  count = (float)sys_hz/freq/(float)divide - 1;
   pwm_set_wrap(slice_num, count);
   setduty();
 }
