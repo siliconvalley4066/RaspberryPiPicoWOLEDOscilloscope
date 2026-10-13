@@ -41,7 +41,7 @@ volatile unsigned long tword_m; // dds tuning word m
 
 void dds_setup() {
 //  pinMode(DDSPin, OUTPUT);      // GPIO2= PWM  output / frequency output
-  refclk = sys_clk / (double) (8*256);
+  refclk = clock_get_hz(clk_sys) / (double) (8*256);
   Setup_timer2();
   tword_m=pow(2,32)*ifreq*0.01/refclk; // calulate DDS new tuning word
   wp = (unsigned char *) wavetable[wave_id];
@@ -55,6 +55,7 @@ void dds_close() {
 void dds_set_freq() {
   double dfreq;
   dfreq = (double)ifreq*0.01;     // adjust output frequency
+  refclk = clock_get_hz(clk_sys) / (double) (8*256);
   tword_m=pow(2,32)*dfreq/refclk; // calulate DDS new tuning word
 }
 
