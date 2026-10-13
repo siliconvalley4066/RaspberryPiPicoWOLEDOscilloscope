@@ -12,7 +12,7 @@ It contains Pulse Generator, DDS Function Generator and Frequency Counter.
 Specifications:
 <li>Dual input channel</li>
 <li>Input voltage range 0 to 3.3V</li>
-<li>12 bit ADC 500 ksps single channel, 250 ksps dual channel</li>
+<li>12 bit ADC 2 Msps single channel, 250 ksps dual channel</li>
 <li>Measures minimum, maximum and average values</li>
 <li>Measures frequency and duty cycle</li>
 <li>Spectrum FFT analysis</li>
@@ -37,19 +37,20 @@ const char* pass = "Your Password";
 </pre>
 
 Develop environment is:<br>
-Arduino IDE 1.8.19<br>
-Raspberry Pi Pico/RP2040 by Earle F. Philhower, III version 3.4.0<br>
-CPU speed 125MHz<br>
+Arduino IDE 2.3.10<br>
+Raspberry Pi Pico/RP2040 by Earle F. Philhower, III version 6.3.0<br>
+CPU speed 133 MHz<br>
 
 Libraries:<br>
 TFT_eSPI 2.5.43<br>
 arduinoFFT by Enrique Condes 2.0.0<br>
-arduinoWebSockets from https://github.com/Links2004/arduinoWebSockets
+WebSockets by Markus Sattler version 2.7.2
 
 You need to customize the TFT_espi library by referring to the TFT_espi folder here.
 
-2usec/div range is 10 times magnification at 500ksps.<br>
-4usec/div range is 5 times magnification at 500ksps.<br>
+At 5 usec/div range (2 Msps), ADC is overclocked to 192MHz.<br>
+At 10 usec/div range (1 Msps), ADC is overclocked to 96MHz.<br>
+So, there may be some decrease in accuracy.<br>
 The magnification applies sin(x)/x interpolation.
 
 Schematics:<br>
