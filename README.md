@@ -43,7 +43,7 @@ Libraries:<br>
 Adafruit_SSD1306<br>
 Adafruit_SH110X<br>
 arduinoFFT by Enrique Condes 2.0.0<br>
-arduinoWebSockets from https://github.com/Links2004/arduinoWebSockets
+WebSockets by Markus Sattler version 2.7.2
 
 At 5 usec/div range (2 Msps), ADC is overclocked to 192MHz.<br>
 At 10 usec/div range (1 Msps), ADC is overclocked to 96MHz.<br>
