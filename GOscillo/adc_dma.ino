@@ -30,7 +30,7 @@
 
 // globals
 dma_channel_config cfg;
-uint dma_chan;
+int dma_chan = -1;
 
 void sample_2us() {
   byte ch;
@@ -115,7 +115,8 @@ void dmaadc_setup(float clock_div) {
 
   sleep_ms(100);
   // Set up the DMA to start transferring data as soon as it appears in FIFO
-  dma_chan = dma_claim_unused_channel(true);
+  if (dma_chan < 0)
+    dma_chan = dma_claim_unused_channel(true);
   cfg = dma_channel_get_default_config(dma_chan);
 
   // Reading from constant address, writing to incrementing byte addresses

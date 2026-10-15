@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.03
+ * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.04
  * The max realtime sampling rates are 250ksps with 2 channels and 2Msps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
