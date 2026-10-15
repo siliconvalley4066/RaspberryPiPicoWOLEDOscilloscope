@@ -415,7 +415,7 @@ void menu1_sw(byte sw) {
         ch1_mode = MODE_ON;
     } else if (sw == BTN_LEFT) {  // CH1 - ON/OFF
       if (rate < RATE_DUAL) {
-        if(ch1_mode == MODE_OFF) {
+        if (ch1_mode == MODE_OFF) {
           ch0_mode = MODE_OFF;
           ch1_mode = MODE_ON;
         } else {
