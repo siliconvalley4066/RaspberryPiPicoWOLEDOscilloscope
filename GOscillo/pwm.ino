@@ -49,10 +49,10 @@ void pulse_init() {
   p_range = constrain(p_range, 0, 8);
   divide = range_div[p_range];
 
-  // Tell GPIO 0 and 1 they are allocated to the PWM
-  gpio_set_function(0, GPIO_FUNC_PWM);
-  // Find out which PWM slice is connected to GPIO 0 (it's slice 0)
-  slice_num = pwm_gpio_to_slice_num(0);
+  // Tell GPIO is allocated to the PWM
+  gpio_set_function(PWMPin, GPIO_FUNC_PWM);
+  // Find out which PWM slice is connected to GPIO
+  slice_num = pwm_gpio_to_slice_num(PWMPin);
   setCounter(divide);           // set divider
   pwm_set_wrap(slice_num, count);
   pwm_set_chan_level(slice_num, PWM_CHAN_A, (unsigned int)(((long)count * duty) >> 8));
@@ -122,17 +122,9 @@ void disp_pulse_frq(void) {
 }
 
 void disp_pulse_dty(void) {
-  static bool sp = true;
-  float fduty = duty*100.0/256.0;
-  display.print(fduty, 1); display.print('%');
-  if (fduty < 9.95) {
-    if (sp) {
-      display.print(' ');
-      sp = false;
-    }
-  } else {
-    sp = true;
-  }
+  if (duty < 26)    // < 10.0%
+    display.print(' ');
+  display.print(duty*100.0/256.0, 1); display.print("%");
 }
 #endif
 
