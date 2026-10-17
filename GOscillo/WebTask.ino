@@ -38,6 +38,8 @@ void handleRoot(void) {
     handle_ch2_mode();
     handle_ch_offset2();
     handle_wave_fft();
+    handle_time_mag();
+    handle_mag_pos();
     handle_pwm_onoff();
     handle_dds_onoff();
     handle_wave_select();
@@ -326,6 +328,39 @@ void handle_pwm_freq() {
   }
 }
 
+void handle_time_mag() {
+  if (!server.hasArg("time_mag")) {
+    // server.send(400, "text/plain", "Missing time_mag");
+    return;
+  }
+  String val = server.arg("time_mag");
+  int tm = val.toInt();
+  if (tm != 1 && tm != 2 && tm != 5 && tm != 10) {
+    server.send(400, "text/plain", "Invalid time_mag");
+    return;
+  }
+  time_mag = (byte)tm;
+  int maxpos = SAMPLES - SAMPLES / time_mag - 5;
+  if (maxpos < 0) maxpos = 0;
+  if (mag_pos > maxpos) mag_pos = maxpos;
+  server.send(200, "text/html", "OK");
+}
+
+void handle_mag_pos() {
+  if (!server.hasArg("mag_pos")) {
+    // server.send(400, "text/plain", "Missing mag_pos");
+    return;
+  }
+  String v = server.arg("mag_pos");
+  int p = v.toInt();
+  if (p < 0) p = 0;
+  int maxpos = SAMPLES - SAMPLES / time_mag - 5;
+  if (maxpos < 0) maxpos = 0;
+  if (p > maxpos) p = maxpos;
+  mag_pos = p;
+  server.send(200, "text/html", String(mag_pos));
+}
+
 void index_html(void * pvParameters) {
 String html;
 
@@ -519,6 +554,16 @@ window.addEventListener("load", function () {
       elements.item(i).checked = true;
     }
   }
+  const magSlider = document.getElementById("mag_pos");
+  const magLabel = document.getElementById("mag_pos_label");
+  if (magSlider && magLabel) {
+    magSlider.value = "%MAGPOS%";
+    magLabel.textContent = magSlider.value;
+    magSlider.addEventListener("input", function () {
+      magLabel.textContent = this.value;
+//      post_mag_pos();   // Sends immediately each time the slider is moved
+    });
+  }
 });
 async function postform(frameid) {
   try {
@@ -641,8 +686,144 @@ async function post_duty() {
   } catch (error) { console.log(error); }
 }
 </script>
+
+<script type="text/javascript">
+window.addEventListener("load", function () {
+  const initTimeMag = '%TIMEMAG%';
+  const radios = document.getElementsByName('time_mag');
+  for (let r of radios) {
+    if (r.value === initTimeMag) r.checked = true;
+  }
+  const magSlider = document.getElementById('mag_pos');
+  if (magSlider) {
+    magSlider.value = '%MAGPOS%';
+    document.getElementById('mag_pos_label').textContent = magSlider.value;
+  }
+  updateMagSliderMax();
+});
+
+async function post_time_mag() {
+  try {
+    const radios = document.getElementsByName("time_mag");
+    let val = "0";
+    for (let i = 0; i < radios.length; i++) {
+      if (radios[i].checked) {
+        val = radios[i].value;
+        break;
+      }
+    }
+
+    const form = new FormData();
+    form.append("time_mag", val);
+
+    const response = await fetch("/", {
+      method: "POST",
+      body: form
+    });
+
+    if (response.ok) {
+      const text = await response.text();
+      console.log("time_mag=", text);
+      // recalculate slider max
+      const slider = document.getElementById("mag_pos");
+      if (slider) {
+        let tm = Number(val);
+        let maxpos = 0;
+        if (tm > 1) maxpos = 128 - Math.floor(128 / tm) - 5;
+        if (maxpos < 0) maxpos = 0;
+        slider.max = String(maxpos);
+        if (Number(slider.value) > maxpos) slider.value = String(maxpos);
+        document.getElementById("mag_pos_label").textContent = slider.value;
+      }
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+(function(){
+  const SLIDER_ID = 'mag_pos';
+  const LABEL_ID = 'mag_pos_label';
+  const DEBOUNCE_MS = 120;
+
+  function setup() {
+    const slider = document.getElementById(SLIDER_ID);
+    const label = document.getElementById(LABEL_ID);
+    if (!slider || !label) {
+      console.error('cannot find mag_pos or mag_pos_label.');
+      return;
+    }
+    label.textContent = slider.value;
+
+    let debounceTimer = null;
+
+    slider.addEventListener('input', function () {
+      const v = this.value;
+      label.textContent = v; // reflect immediately
+      // debounce to send
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        postMagPos(v);
+        debounceTimer = null;
+      }, DEBOUNCE_MS);
+    });
+
+    slider.addEventListener('change', function () {
+      const v = this.value;
+      label.textContent = v;
+      if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+      postMagPos(v);
+    });
+
+    console.log('mag_pos handlers registered');
+  }
+
+  async function postMagPos(value) {
+    try {
+      const form = new FormData();
+      form.append('mag_pos', String(value));
+      const resp = await fetch('/', { method: 'POST', body: form });
+      if (resp.ok) {
+        const text = await resp.text();
+        // Align labels and sliders with the values returned by the server
+        document.getElementById(LABEL_ID).textContent = String(text);
+        document.getElementById(SLIDER_ID).value = String(text);
+        console.log('postMagPos ok ->', text);
+      } else {
+        console.warn('postMagPos status', resp.status);
+      }
+    } catch (err) {
+      console.error('postMagPos error', err);
+    }
+  }
+
+  // Call setup once the DOM has loaded
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(setup, 0);
+  } else {
+    window.addEventListener('DOMContentLoaded', setup);
+  }
+})();
+
+function updateMagSliderMax() {
+  let tm = 0;
+  const radios = document.getElementsByName('time_mag');
+  for (let r of radios) if (r.checked) { tm = parseInt(r.value); break; }
+  let maxpos = 0;
+  if (tm > 1) {
+    maxpos = 128 - Math.floor(128 / tm) - 5;
+  }
+  if (maxpos < 0) maxpos = 0;
+  const slider = document.getElementById('mag_pos');
+  if (slider) {
+    slider.max = String(maxpos);
+    if (parseInt(slider.value) > maxpos) slider.value = String(maxpos);
+    document.getElementById('mag_pos_label').textContent = slider.value;
+  }
+}
+</script>
 <body>
-<h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.33</h3>
+<h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.37</h3>
 <div style='float: left; margin-right: 10px'>
 <canvas id='cvs1' width='641' height='401' class='float'></canvas></div>
 <form id='rate0'>Rate: <label id="rate_area">%RATE% %REALDMA%</label>
@@ -723,13 +904,13 @@ async function post_duty() {
 
 <div>
 <label>Pulse Frequency 
-<input type="number" id='mfreq' name="wfreq" size="8" value="%PULSEFREQ%" onchange='post_wfreq()' />
+<input type="number" id='mfreq' name="wfreq" size="8" value="%PULSEFREQ%" style="width:14ch;" onchange='post_wfreq()' />
 Hz</label>
 </div>
 
 <div>
 <label>Pulse Duty 
-<input type="number" id='pduty' name="duty" size="4" value="%PULSEDUTY%" onchange='post_duty()' />
+<input type="number" id='pduty' name="duty" size="4" value="%PULSEDUTY%" style="width:7ch;" onchange='post_duty()' />
 %</label>
 </div>
 
@@ -777,6 +958,22 @@ Hz</label>
 
 <label>CH1 frequency: </label><label id="ch1_freq"></label>
 
+<div>
+  <form id='time_mag_form' onchange='post_time_mag()'>
+    <label>Time Magnify:</label>
+    <label><input type="radio" name="time_mag" value="1">x1</label>
+    <label><input type="radio" name="time_mag" value="2">x2</label>
+    <label><input type="radio" name="time_mag" value="5">x5</label>
+    <label><input type="radio" name="time_mag" value="10">x10</label>
+  </form>
+  <form id='mag_pos_form'>
+    <label>Mag Position:
+      <input type="range" id="mag_pos" name="mag_pos" min="0" max="120" step="1" value="%MAGPOS%" style="width:640px;">
+    </label>
+    <span id="mag_pos_label">%MAGPOS%</span>
+  </form>
+</div>
+
 </body>
 </html>
 )=====";
@@ -823,6 +1020,8 @@ Hz</label>
   html.replace("%CH2OFFSET%", String((ch1_off * VREF[range1]) / 4096));
   html.replace("%PULSEDUTY%", String(duty*100.0/256.0, 1));
   html.replace("%PULSEFREQ%", String(pulse_frq()));
+  html.replace("%TIMEMAG%", String(time_mag));
+  html.replace("%MAGPOS%", String(mag_pos));
 
   // send the HTML
   server.send(200, "text/html", html);
