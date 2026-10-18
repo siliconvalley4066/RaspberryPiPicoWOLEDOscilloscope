@@ -53,145 +53,137 @@ void handleRoot(void) {
 }
 
 void handle_ch1_mode() {
+  if (!server.hasArg("ch1_mode")) return;
   String val = server.arg("ch1_mode");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "chon") {
-      ch0_mode = MODE_ON;       // CH1 ON
-    } else if (val == "chinv") {
-      ch0_mode = MODE_INV;      // CH1 INV
-    } else if (val == "choff") {
-      ch0_mode = MODE_OFF;      // CH1 OFF
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "chon") {
+    ch0_mode = MODE_ON;       // CH1 ON
+  } else if (val == "chinv") {
+    ch0_mode = MODE_INV;      // CH1 INV
+  } else if (val == "choff") {
+    ch0_mode = MODE_OFF;      // CH1 OFF
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_ch2_mode() {
+  if (!server.hasArg("ch2_mode")) return;
   String val = server.arg("ch2_mode");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "chon") {
-      ch1_mode = MODE_ON;       // CH2 ON
-    } else if (val == "chinv") {
-      ch1_mode = MODE_INV;      // CH2 INV
-    } else if (val == "choff") {
-      ch1_mode = MODE_OFF;      // CH2 OFF
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "chon") {
+    ch1_mode = MODE_ON;       // CH2 ON
+  } else if (val == "chinv") {
+    ch1_mode = MODE_INV;      // CH2 INV
+  } else if (val == "choff") {
+    ch1_mode = MODE_OFF;      // CH2 OFF
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_rate() {
+  if (!server.hasArg("rate")) return;
   String val = server.arg("rate");
-  if (val != NULL) {
-    int nrate = rate;
-    // Serial.println(val);
-    if (val == "1") {
-      wrate = 3;    // fast
-      if (rate > RATE_MIN) nrate = rate - 1;
-    } else if (val == "0") {
-      wrate = 7;    // slow
-      if (rate < RATE_MAX) nrate = rate + 1;
-    }
-    String strrate;
-    strrate = Rates[nrate];
-    server.send(200, "text/html", strrate+((nrate > RATE_DMA)?"":" DMA"));  // response 200, send OK
+  int nrate = rate;
+  // Serial.println(val);
+  if (val == "1") {
+    wrate = 3;    // fast
+    if (rate > RATE_MIN) nrate = rate - 1;
+  } else if (val == "0") {
+    wrate = 7;    // slow
+    if (rate < RATE_MAX) nrate = rate + 1;
   }
+  String strrate;
+  strrate = Rates[nrate];
+  server.send(200, "text/html", strrate+((nrate > RATE_DMA)?"":" DMA"));  // response 200, send OK
 }
 
 void handle_range1() {
+  if (!server.hasArg("range1")) return;
   String val = server.arg("range1");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "1") {
-      updown_ch0range(3);  // range1 up
-    } else if (val == "0") {
-      updown_ch0range(7);  // range1 down
-    }
-    String ch1acdc;
-    if (digitalRead(CH0DCSW) == LOW)    // DC/AC input
-      ch1acdc = "AC ";
-    else
-      ch1acdc = "DC ";
-    server.send(200, "text/html", ch1acdc + Ranges[range0]);  // response 200, send OK
+  // Serial.println(val);
+  if (val == "1") {
+    updown_ch0range(3);  // range1 up
+  } else if (val == "0") {
+    updown_ch0range(7);  // range1 down
   }
+  String ch1acdc;
+  if (digitalRead(CH0DCSW) == LOW)    // DC/AC input
+    ch1acdc = "AC ";
+  else
+    ch1acdc = "DC ";
+  server.send(200, "text/html", ch1acdc + Ranges[range0]);  // response 200, send OK
 }
 
 void handle_range2() {
+  if (!server.hasArg("range2")) return;
   String val = server.arg("range2");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "1") {
-      updown_ch1range(3);  // range2 up
-    } else if (val == "0") {
-      updown_ch1range(7);  // range2 down
-    }
-    String ch2acdc;
-    if (digitalRead(CH1DCSW) == LOW)    // DC/AC input
-      ch2acdc = "AC ";
-    else
-      ch2acdc = "DC ";
-    server.send(200, "text/html", ch2acdc + Ranges[range1]);  // response 200, send OK
+  // Serial.println(val);
+  if (val == "1") {
+    updown_ch1range(3);  // range2 up
+  } else if (val == "0") {
+    updown_ch1range(7);  // range2 down
   }
+  String ch2acdc;
+  if (digitalRead(CH1DCSW) == LOW)    // DC/AC input
+    ch2acdc = "AC ";
+  else
+    ch2acdc = "DC ";
+  server.send(200, "text/html", ch2acdc + Ranges[range1]);  // response 200, send OK
 }
 
 void handle_trigger_mode() {
+  if (!server.hasArg("trigger_mode")) return;
   String val = server.arg("trigger_mode");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "0") {
-      trig_mode = 0;  // Auto
-    } else if (val == "1") {
-      trig_mode = 1;  // Normal
-    } else if (val == "2") {
-      trig_mode = 2;  // Scan
-    } else if (val == "3") {
-      trig_mode = 3;  // Once
-    }
-    if (trig_mode != TRIG_ONE)
-      Start = true;
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "0") {
+    trig_mode = 0;  // Auto
+  } else if (val == "1") {
+    trig_mode = 1;  // Normal
+  } else if (val == "2") {
+    trig_mode = 2;  // Scan
+  } else if (val == "3") {
+    trig_mode = 3;  // Once
   }
+  if (trig_mode != TRIG_ONE)
+    Start = true;
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_trig_ch() {
+  if (!server.hasArg("trig_ch")) return;
   String val = server.arg("trig_ch");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "ch1") {
-      trig_ch = ad_ch0;
-    } else if (val == "ch2") {
-      trig_ch = ad_ch1;
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "ch1") {
+    trig_ch = ad_ch0;
+  } else if (val == "ch2") {
+    trig_ch = ad_ch1;
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_trig_edge() {
+  if (!server.hasArg("trig_edge")) return;
   String val = server.arg("trig_edge");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "down") {
-      trig_edge = TRIG_E_DN;  // trigger fall
-    } else if (val == "up") {
-      trig_edge = TRIG_E_UP;  // trigger rise
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "down") {
+    trig_edge = TRIG_E_DN;  // trigger fall
+  } else if (val == "up") {
+    trig_edge = TRIG_E_UP;  // trigger rise
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_trig_level() {
+  if (!server.hasArg("trig_lvl")) return;
   String val = server.arg("trig_lvl");
-  if (val != NULL) {
-    // Serial.println(val);
-    trig_lv = val.toInt();
-    set_trigger_ad();
-    server.send(200, "text/html", "OK");  // response 200, send OK
-  }
+  // Serial.println(val);
+  trig_lv = val.toInt();
+  set_trigger_ad();
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_run_hold() {
+  if (!server.hasArg("run_hold")) return;
   String val = server.arg("run_hold");
   if (val == "run") {
     // Serial.println(val);
@@ -251,81 +243,74 @@ void handle_ch_offset2() {
 }
 
 void handle_wave_fft() {
+  if (!server.hasArg("wavefft")) return;
   String val = server.arg("wavefft");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "wave") {
-      wfft = false;
-    } else if (val == "fft") {
-      wfft = true;
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "wave") {
+    wfft = false;
+  } else if (val == "fft") {
+    wfft = true;
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_pwm_onoff() {
+  if (!server.hasArg("pwm_on")) return;
   String val = server.arg("pwm_on");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "on") {
-      update_frq(0);
-      pulse_start();
-      pulse_mode = true;
-    } else if (val == "off") {
-      pulse_close();
-      pulse_mode = false;
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "on") {
+    update_frq(0);
+    pulse_start();
+    pulse_mode = true;
+  } else if (val == "off") {
+    pulse_close();
+    pulse_mode = false;
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_dds_onoff() {
+  if (!server.hasArg("dds_on")) return;
   String val = server.arg("dds_on");
-  if (val != NULL) {
-    // Serial.println(val);
-    if (val == "on") {
-      wdds = true;
-    } else if (val == "off") {
-      wdds = false;
-    }
-    server.send(200, "text/html", "OK");  // response 200, send OK
+  // Serial.println(val);
+  if (val == "on") {
+    wdds = true;
+  } else if (val == "off") {
+    wdds = false;
   }
+  server.send(200, "text/html", "OK");  // response 200, send OK
 }
 
 void handle_wave_select() {
+  if (!server.hasArg("wave_select")) return;
   String val = server.arg("wave_select");
-  if (val != NULL) {
-    // Serial.println(val);
-    server.send(200, "text/html", "OK");  // response 200, send OK
-    set_wave(val.toInt());
-  }
+  // Serial.println(val);
+  server.send(200, "text/html", "OK");  // response 200, send OK
+  set_wave(val.toInt());
 }
 
 void handle_dds_freq() {
+  if (!server.hasArg("dfreq")) return;
   String val = server.arg("dfreq");
-  if (val != NULL) {
-    // Serial.println(val);
-    server.send(200, "text/html", String(set_freq((float)val.toFloat()), 2)); // response 200, send OK
-  }
+  // Serial.println(val);
+  server.send(200, "text/html", String(set_freq((float)val.toFloat()), 2)); // response 200, send OK
 }
 
 void handle_pwm_duty() {
+  if (!server.hasArg("duty")) return;
   String val = server.arg("duty");
-  if (val != NULL) {
-    // Serial.println(val);
-    duty = constrain(round(val.toFloat() * 2.56), 0, 255);
-    setduty();
-    server.send(200, "text/html", String(duty*100.0/256.0, 1)); // response 200, send OK
-  }
+  // Serial.println(val);
+  duty = constrain(round(val.toFloat() * 2.56), 0, 255);
+  setduty();
+  server.send(200, "text/html", String(duty*100.0/256.0, 1)); // response 200, send OK
 }
 
 void handle_pwm_freq() {
+  if (!server.hasArg("wfreq")) return;
   String val = server.arg("wfreq");
-  if (val != NULL) {
-    // Serial.println(val);
-    set_pulse_frq(val.toFloat());
-    server.send(200, "text/html", String(pulse_frq())); // response 200, send OK
-  }
+  // Serial.println(val);
+  set_pulse_frq(val.toFloat());
+  server.send(200, "text/html", String(pulse_frq())); // response 200, send OK
 }
 
 void handle_time_mag() {
