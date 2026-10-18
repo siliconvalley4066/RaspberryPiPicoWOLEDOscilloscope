@@ -397,7 +397,8 @@ void scaleDataArray(byte ad_ch, int trig_point)
     case 2:
     case 5:
     case 10:
-      mag_pos = constrain(mag_pos, 0, SAMPLES - SAMPLES/time_mag - 5);
+      // Empirical: ensures mag() does not read beyond buffer end for factors 2/5/10
+      mag_pos = constrain(mag_pos, 0, SAMPLES - SAMPLES/time_mag - 6);
       mag(data[sample+ch], time_mag, mag_pos);  // magnify timebase for display
 #ifndef NOWEB
       mag(rdata, time_mag, mag_pos);            // magnify timebase for WEB

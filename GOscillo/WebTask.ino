@@ -340,8 +340,12 @@ void handle_time_mag() {
     return;
   }
   time_mag = (byte)tm;
-  int maxpos = SAMPLES - SAMPLES / time_mag - 5;
-  if (maxpos < 0) maxpos = 0;
+  int maxpos = 0;
+  if (time_mag > 1) {
+    // Empirical: ensures mag() does not read beyond buffer end for factors 2/5/10
+    maxpos = SAMPLES - SAMPLES / time_mag - 6;
+    if (maxpos < 0) maxpos = 0;
+  }
   if (mag_pos > maxpos) mag_pos = maxpos;
   server.send(200, "text/html", "OK");
 }
@@ -354,8 +358,12 @@ void handle_mag_pos() {
   String v = server.arg("mag_pos");
   int p = v.toInt();
   if (p < 0) p = 0;
-  int maxpos = SAMPLES - SAMPLES / time_mag - 5;
-  if (maxpos < 0) maxpos = 0;
+  int maxpos = 0;
+  if (time_mag > 1) {
+    // Empirical: ensures mag() does not read beyond buffer end for factors 2/5/10
+    maxpos = SAMPLES - SAMPLES / time_mag - 6;
+    if (maxpos < 0) maxpos = 0;
+  }
   if (p > maxpos) p = maxpos;
   mag_pos = p;
   server.send(200, "text/html", String(mag_pos));
@@ -389,7 +397,7 @@ ws.onmessage = function(evt) {
   var cnstH= groundH/4096;
   var pichH = groundH/8;
   const fftsamples = 64;
-  const displng = 128;
+  const displng = %SAMPLES%;
   const dotpich = (groundW - 1) / displng;
   const fftpich = 512 / fftsamples;
   ctx.beginPath();
@@ -695,17 +703,46 @@ window.addEventListener("load", function () {
     if (r.value === initTimeMag) r.checked = true;
   }
   const magSlider = document.getElementById('mag_pos');
-  if (magSlider) {
+  const magLabel = document.getElementById('mag_pos_label');
+  if (magSlider && magLabel) {
     magSlider.value = '%MAGPOS%';
-    document.getElementById('mag_pos_label').textContent = magSlider.value;
+    magLabel.textContent = magSlider.value;
   }
   updateMagSliderMax();
 });
 
+// DEBOUNCE settings
+const DEBOUNCE_MS = 120;
+let magDebounceTimer = null;
+
+async function post_mag_pos(value) {
+  try {
+    const val = String(value);
+    const form = new FormData();
+    form.append('mag_pos', val);
+    const response = await fetch("/", { method: "POST", body: form });
+    if (response.ok) {
+      const text = await response.text();
+      // Align labels/sliders assuming the server returns clamped values
+      const clamped = String(text);
+      const slider = document.getElementById('mag_pos');
+      const label = document.getElementById('mag_pos_label');
+      if (label) label.textContent = clamped;
+      if (slider) slider.value = clamped;
+      console.log('post_mag_pos ok ->', clamped);
+    } else {
+      console.warn('post_mag_pos status', response.status);
+    }
+  } catch (err) {
+    console.error('post_mag_pos error', err);
+  }
+}
+
+// Send `time_mag` to the server (radio switch)
 async function post_time_mag() {
   try {
     const radios = document.getElementsByName("time_mag");
-    let val = "0";
+    let val = "1"; // default 1（x1）
     for (let i = 0; i < radios.length; i++) {
       if (radios[i].checked) {
         val = radios[i].value;
@@ -722,29 +759,20 @@ async function post_time_mag() {
     });
 
     if (response.ok) {
-      const text = await response.text();
-      console.log("time_mag=", text);
-      // recalculate slider max
-      const slider = document.getElementById("mag_pos");
-      if (slider) {
-        let tm = Number(val);
-        let maxpos = 0;
-        if (tm > 1) maxpos = 128 - Math.floor(128 / tm) - 5;
-        if (maxpos < 0) maxpos = 0;
-        slider.max = String(maxpos);
-        if (Number(slider.value) > maxpos) slider.value = String(maxpos);
-        document.getElementById("mag_pos_label").textContent = slider.value;
-      }
+      // Recalculate the slider's `max` value after `time_mag` is updated
+      updateMagSliderMax();
+    } else {
+      console.warn('post_time_mag status', response.status);
     }
   } catch (error) {
     console.log(error);
   }
 }
 
+// Register events on the slider after the DOM is ready (with debouncing)
 (function(){
   const SLIDER_ID = 'mag_pos';
   const LABEL_ID = 'mag_pos_label';
-  const DEBOUNCE_MS = 120;
 
   function setup() {
     const slider = document.getElementById(SLIDER_ID);
@@ -755,49 +783,28 @@ async function post_time_mag() {
     }
     label.textContent = slider.value;
 
-    let debounceTimer = null;
-
+    // Update labels immediately + send to server with debouncing
     slider.addEventListener('input', function () {
       const v = this.value;
-      label.textContent = v; // reflect immediately
-      // debounce to send
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        postMagPos(v);
-        debounceTimer = null;
+      label.textContent = v;
+      if (magDebounceTimer) clearTimeout(magDebounceTimer);
+      magDebounceTimer = setTimeout(() => {
+        post_mag_pos(v);
+        magDebounceTimer = null;
       }, DEBOUNCE_MS);
     });
 
+    // change: Ensure transmission upon completion of the operation
     slider.addEventListener('change', function () {
       const v = this.value;
       label.textContent = v;
-      if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
-      postMagPos(v);
+      if (magDebounceTimer) { clearTimeout(magDebounceTimer); magDebounceTimer = null; }
+      post_mag_pos(v);
     });
 
     console.log('mag_pos handlers registered');
   }
 
-  async function postMagPos(value) {
-    try {
-      const form = new FormData();
-      form.append('mag_pos', String(value));
-      const resp = await fetch('/', { method: 'POST', body: form });
-      if (resp.ok) {
-        const text = await resp.text();
-        // Align labels and sliders with the values returned by the server
-        document.getElementById(LABEL_ID).textContent = String(text);
-        document.getElementById(SLIDER_ID).value = String(text);
-        console.log('postMagPos ok ->', text);
-      } else {
-        console.warn('postMagPos status', resp.status);
-      }
-    } catch (err) {
-      console.error('postMagPos error', err);
-    }
-  }
-
-  // Call setup once the DOM has loaded
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     setTimeout(setup, 0);
   } else {
@@ -805,23 +812,38 @@ async function post_time_mag() {
   }
 })();
 
+// update slider max according to time_mag, using SAMPLES injected by server as %SAMPLES%
 function updateMagSliderMax() {
-  let tm = 0;
   const radios = document.getElementsByName('time_mag');
-  for (let r of radios) if (r.checked) { tm = parseInt(r.value); break; }
+  let tm = 1;
+  for (let r of radios) {
+    if (r.checked) { tm = parseInt(r.value); break; }
+  }
+
+  // SAMPLES must be injected server-side: e.g. const samples = 128;
+  const samples = %SAMPLES%;
+
   let maxpos = 0;
   if (tm > 1) {
-    maxpos = 128 - Math.floor(128 / tm) - 5;
+    // Empirical: ensures mag() does not read beyond buffer end for factors 2/5/10
+    maxpos = samples - Math.floor(samples / tm) - 6;
+    if (maxpos < 0) maxpos = 0;
   }
-  if (maxpos < 0) maxpos = 0;
+
   const slider = document.getElementById('mag_pos');
   if (slider) {
     slider.max = String(maxpos);
-    if (parseInt(slider.value) > maxpos) slider.value = String(maxpos);
-    document.getElementById('mag_pos_label').textContent = slider.value;
+    if (parseInt(slider.value) > maxpos) {
+      slider.value = String(maxpos);
+      // Once the value has been clamped, notify the server (if necessary)
+      post_mag_pos(slider.value);
+    }
+    const lbl = document.getElementById('mag_pos_label');
+    if (lbl) lbl.textContent = slider.value;
   }
 }
 </script>
+
 <body>
 <h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.37</h3>
 <div style='float: left; margin-right: 10px'>
@@ -968,7 +990,7 @@ Hz</label>
   </form>
   <form id='mag_pos_form'>
     <label>Mag Position:
-      <input type="range" id="mag_pos" name="mag_pos" min="0" max="120" step="1" value="%MAGPOS%" style="width:640px;">
+      <input type="range" id="mag_pos" name="mag_pos" min="0" max="120" step="1" value="%MAGPOS%" style="width:90%;max-width:640px;">
     </label>
     <span id="mag_pos_label">%MAGPOS%</span>
   </form>
@@ -1022,6 +1044,7 @@ Hz</label>
   html.replace("%PULSEFREQ%", String(pulse_frq()));
   html.replace("%TIMEMAG%", String(time_mag));
   html.replace("%MAGPOS%", String(mag_pos));
+  html.replace("%SAMPLES%", String(SAMPLES));
 
   // send the HTML
   server.send(200, "text/html", html);
