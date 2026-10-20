@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.05
+ * Raspberry Pi Pico Oscilloscope using a 160x80 LCD Version 1.06
  * The max realtime sampling rates are 250ksps with 2 channels and 2Msps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -12,7 +12,8 @@
  * Copyright (c) 2009, Noriaki Mitsunaga
  */
 
-//#define NOLCD
+// #define NOLCD
+// #define NOWEB
 
 #ifndef NOLCD
 #include <TFT_eSPI.h>
@@ -77,6 +78,7 @@ const int SAMPLES = 160;
 const int NSAMP = 640;
 const int DISPLNG = 130;
 const int DOTS_DIV = 10;
+const int TRIG_MAX = 80;
 const byte ad_ch0 = 26;                 // Analog pin for channel 0
 const byte ad_ch1 = 27;                 // Analog pin for channel 1
 const long VREF[] = {37, 73, 183, 367, 733}; // reference voltage 3.3V ->  33 :   1V/div range (100mV/dot)
@@ -381,7 +383,8 @@ void scaleDataArray(byte ad_ch, int trig_point)
     case 2:
     case 5:
     case 10:
-      mag_pos = constrain(mag_pos, 0, SAMPLES - SAMPLES/time_mag - 5);
+      // Empirical: ensures mag() does not read beyond buffer end for factors 2/5/10
+      mag_pos = constrain(mag_pos, 0, SAMPLES - SAMPLES/time_mag - 6);
       mag(data[sample+ch], time_mag, mag_pos);  // magnify timebase for display
 #ifndef NOWEB
       mag(rdata, time_mag, mag_pos);            // magnify timebase for WEB
@@ -873,7 +876,7 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   trig_mode = EEPROM.read(p++);             // trig_mode
   if (trig_mode > TRIG_SCAN) ++error;
   trig_lv = EEPROM.read(p++);               // trig_lv
-  if (trig_lv > LCD_YMAX) ++error;
+  if (trig_lv > TRIG_MAX) ++error;
   trig_edge = EEPROM.read(p++);             // trig_edge
   if (trig_edge > 1) ++error;
   trig_ch = EEPROM.read(p++);               // trig_ch
