@@ -381,10 +381,11 @@ ws.onmessage = function(evt) {
   var pichX = 50;
   var cnstH= groundH/4096;
   var pichH = groundH/8;
-  const fftsamples = 64;
+  const fftsamples = %FFTSAMPLE%;
   const displng = %SAMPLES%;
   const dotpich = (groundW - 1) / displng;
   const fftpich = 512 / fftsamples;
+  const hcenter = Math.floor(groundW / pichX / 2);
   ctx.beginPath();
   ctx.save();
   ctx.strokeStyle = "rgb(128,128,128)";
@@ -403,8 +404,8 @@ ws.onmessage = function(evt) {
     ctx.moveTo(groundX0, groundY0-i*pichH);
     ctx.lineTo(groundW, groundY0-i*pichH);
     for (var j=10; j<50; j=j+10){
-      ctx.moveTo(6*pichX-5, groundY0-i*pichH-j);
-      ctx.lineTo(6*pichX+5, groundY0-i*pichH-j);
+      ctx.moveTo(hcenter*pichX-5, groundY0-i*pichH-j);
+      ctx.lineTo(hcenter*pichX+5, groundY0-i*pichH-j);
     }
   }
   ctx.moveTo(groundX0, groundY0-i*pichH);
@@ -554,7 +555,6 @@ window.addEventListener("load", function () {
     magLabel.textContent = magSlider.value;
     magSlider.addEventListener("input", function () {
       magLabel.textContent = this.value;
-//      post_mag_pos();   // Sends immediately each time the slider is moved
     });
   }
 });
@@ -832,7 +832,7 @@ function updateMagSliderMax() {
 <body>
 <h3>Raspberry Pi Pico W Web Oscilloscope ver. 1.37</h3>
 <div style='float: left; margin-right: 10px'>
-<canvas id='cvs1' width='641' height='401' class='float'></canvas></div>
+<canvas id='cvs1' width='%WAVEWIDTH%' height='401' class='float'></canvas></div>
 <form id='rate0'>Rate: <label id="rate_area">%RATE% %REALDMA%</label>
   <button type="button" name='rate' value='1' onclick='postrate(this.value)'>FAST</button>
   <button type="button" name='rate' value='0' onclick='postrate(this.value)'>SLOW</button></form>
@@ -863,7 +863,7 @@ function updateMagSliderMax() {
 <label><input type="radio" name="trig_edge" value="down">DOWN</label>
 </form></div>
 <form id='trigger_lvl' oninput='postform(this.id)'><label>Trigger Level</label>
-<input type="range" name="trig_lvl" min="0" max="80" step="1" value="%TRIGGLEVEL%"></form>
+<input type="range" name="trig_lvl" min="0" max="%TRIGMAX%" step="1" value="%TRIGGLEVEL%"></form>
 <div>
 <form id='f_run_hold' onchange='postform(this.id)'>
 <label><input type="radio" name="run_hold" value="run">RUN</label>
@@ -1030,7 +1030,13 @@ Hz</label>
   html.replace("%TIMEMAG%", String(time_mag));
   html.replace("%MAGPOS%", String(mag_pos));
   html.replace("%SAMPLES%", String(SAMPLES));
-
+  html.replace("%FFTSAMPLE%", String(FFT_N / 2));
+  html.replace("%TRIGMAX%", String(TRIG_MAX));
+  if (SAMPLES < 300) {
+    html.replace("%WAVEWIDTH%", String(5 * SAMPLES + 1));
+  } else {
+    html.replace("%WAVEWIDTH%", String(2 * SAMPLES + 1));
+  }
   // send the HTML
   server.send(200, "text/html", html);
 //  vTaskDelete(NULL);

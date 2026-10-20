@@ -1,5 +1,5 @@
 /*
- * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.36
+ * Raspberry Pi Pico Oscilloscope using a 128x64 OLED Version 1.37
  * The max realtime sampling rates are 250ksps with 2 channels and 2Msps with a channel.
  * + Pulse Generator
  * + PWM DDS Function Generator (23 waveforms)
@@ -87,6 +87,7 @@ const int SAMPLES = 128;
 const int NSAMP = 512;
 const int DISPLNG = 100;
 const int DOTS_DIV = 10;
+const int TRIG_MAX = 80;
 const byte ad_ch0 = 26;                 // Analog pin for channel 0
 const byte ad_ch1 = 27;                 // Analog pin for channel 1
 const long VREF[] = {33, 66, 165, 330, 660}; // reference voltage 3.3V ->  33 :   1V/div range (100mV/dot)
@@ -893,7 +894,7 @@ void loadEEPROM() { // Read setting values from EEPROM (abnormal values will be 
   trig_mode = EEPROM.read(p++);             // trig_mode
   if (trig_mode > TRIG_SCAN) ++error;
   trig_lv = EEPROM.read(p++);               // trig_lv
-  if (trig_lv > LCD_YMAX) ++error;
+  if (trig_lv > TRIG_MAX) ++error;
   trig_edge = EEPROM.read(p++);             // trig_edge
   if (trig_edge > 1) ++error;
   trig_ch = EEPROM.read(p++);               // trig_ch

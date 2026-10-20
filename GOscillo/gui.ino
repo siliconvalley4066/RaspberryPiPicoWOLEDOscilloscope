@@ -334,7 +334,7 @@ void menu0_sw(byte sw) {
     break;
   case 6: // trigger level
     if (sw == BTN_RIGHT) {        // trigger level +
-      if (trig_lv < LCD_YMAX) {
+      if (trig_lv < TRIG_MAX) {
         trig_lv ++;
         set_trigger_ad();
       }
